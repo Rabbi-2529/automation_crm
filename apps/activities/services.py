@@ -3,13 +3,19 @@
 Phase 4's automation engine will hook in here: every Activity is an event a workflow trigger can match.
 """
 
+from django.db import transaction
 from django.db.models import Model
+
+from apps.automation import context as automation_context
 
 from .models import Activity, ActivityKind
 
 
 def record(*, org, kind, summary, actor=None, contact=None, company=None, deal=None, data=None, note=None,
            attachment=None, task=None, message=None):
+    data = dict(data or {})
+    if marker := automation_context.marker():
+        data["_automation"] = marker  # caused by a workflow: used for loop protection and the timeline label
     activity = Activity.objects.create(
         org=org,
         kind=kind,
@@ -18,16 +24,24 @@ def record(*, org, kind, summary, actor=None, contact=None, company=None, deal=N
         contact=contact,
         company=company,
         deal=deal,
-        data=data or {},
+        data=data,
         note=note,
         attachment=attachment,
         task=task,
         message=message,
     )
-    for target in (contact, company, deal):
-        if target is not None:
-            type(target).objects.filter(pk=target.pk).update(last_activity_at=activity.created_at)
+    if kind != ActivityKind.AUTOMATION:  # bookkeeping isn't real activity (it would reset "inactive" triggers)
+        for target in (contact, company, deal):
+            if target is not None:
+                type(target).objects.filter(pk=target.pk).update(last_activity_at=activity.created_at)
+    transaction.on_commit(lambda: _dispatch(activity))
     return activity
+
+
+def _dispatch(activity):
+    from apps.automation.events import dispatch
+
+    dispatch(activity)
 
 
 def snapshot(instance, fields):

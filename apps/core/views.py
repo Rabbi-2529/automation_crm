@@ -24,7 +24,7 @@ ROADMAP = [
     ("Phase 1", "Contacts, companies, tags, custom fields, timeline, CSV import", True),
     ("Phase 2", "Pipelines, deals, kanban, tasks & reminders", True),
     ("Phase 3", "Email & SMS, templates, inbox", False),
-    ("Phase 4", "Automation engine: triggers → conditions → actions", False),
+    ("Phase 4", "Automation engine: triggers → conditions → actions", True),
     ("Phase 5", "Web forms, lead scoring, drip campaigns", False),
     ("Phase 6", "Reports & dashboards", False),
     ("Phase 7", "REST API, webhooks, integrations", False),

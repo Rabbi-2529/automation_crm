@@ -1,0 +1,34 @@
+{% extends "layouts/app.html" %}
+{% block title %}Run log{% endblock %}
+{% block page_title %}
+<a href="{% url 'automation:workflow_detail' run.workflow_id %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">{{ run.workflow.name }} /</a> Run #{{ run.pk }}
+{% endblock %}
+{% block page_actions %}
+{% if run.is_open and current_membership.is_manager %}
+<form method="post" action="{% url 'automation:run_cancel' run.pk %}">{% csrf_token %}<button class="btn btn-secondary text-red-600">Cancel run</button></form>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="card mb-6 grid gap-4 text-sm sm:grid-cols-4">
+  <div><p class="text-xs text-slate-500">Status</p><p class="mt-1">{% include "automation/partials/run_status.html" with status=run.status label=run.get_status_display %}</p></div>
+  <div><p class="text-xs text-slate-500">For</p><p class="mt-1">{% if run.deal %}<a href="{% url 'pipeline:deal_detail' run.deal_id %}" class="text-violet-600 hover:underline">{{ run.deal.title }}</a>{% elif run.contact %}<a href="{% url 'contacts:contact_detail' run.contact_id %}" class="text-violet-600 hover:underline">{{ run.contact.display_name }}</a>{% endif %}</p></div>
+  <div><p class="text-xs text-slate-500">Started</p><p class="mt-1">{{ run.created_at|date:"d M Y, H:i" }}</p></div>
+  <div><p class="text-xs text-slate-500">Trigger</p><p class="mt-1">{{ run.trigger_summary|default:"—" }}</p></div>
+  {% if run.error %}<p class="rounded-lg bg-red-50 p-3 text-red-700 ring-1 ring-red-200 sm:col-span-4">{{ run.error }}</p>{% endif %}
+</div>
+
+<ol class="space-y-3">
+  {% for position, action, text, log in plan %}
+  <li class="card flex items-start gap-4 p-4">
+    <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-semibold
+      {% if not log %}bg-slate-100 text-slate-400{% elif log.status == 'done' %}bg-emerald-100 text-emerald-700{% elif log.status == 'failed' %}bg-red-100 text-red-700{% elif log.status == 'waiting' %}bg-amber-100 text-amber-700{% else %}bg-slate-200 text-slate-600{% endif %}">{{ position }}</span>
+    <div class="min-w-0 flex-1 text-sm">
+      <p class="font-medium {% if not log %}text-slate-400{% endif %}">{{ text }}</p>
+      {% if log %}<p class="mt-0.5 text-slate-600">{{ log.get_status_display }}{% if log.message %} · {{ log.message }}{% endif %} <span class="text-xs text-slate-400">· {{ log.created_at|date:"d M H:i:s" }}</span></p>
+      {% elif run.status == "waiting" and position == run.current_step|add:1 %}<p class="mt-0.5 text-amber-700">Runs after {{ run.resume_at|date:"d M Y, H:i" }}</p>
+      {% else %}<p class="mt-0.5 text-slate-400">Not run</p>{% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ol>
+{% endblock %}

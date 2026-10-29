@@ -25,7 +25,8 @@
       {% include "partials/nav_link.html" with href=calendar_url label="Calendar" match="calendar" %}
       {% url "messaging:inbox" as inbox_url %}
       {% include "partials/nav_link.html" with href=inbox_url label="Inbox" match="inbox" badge=inbox_unread_count %}
-      {% include "partials/nav_link.html" with label="Automations" soon="Phase 4" %}
+      {% url "automation:workflow_list" as automations_url %}
+      {% include "partials/nav_link.html" with href=automations_url label="Automations" match="workflow" %}
       {% include "partials/nav_link.html" with label="Reports" soon="Phase 6" %}
       <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">Workspace</p>
       {% url "orgs:teams" as teams_url %}

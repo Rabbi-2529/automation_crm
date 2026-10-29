@@ -1,0 +1,83 @@
+{% extends "layouts/app.html" %}
+{% load static %}
+{% block title %}{% if workflow %}Edit workflow{% else %}New workflow{% endif %}{% endblock %}
+{% block page_title %}
+<a href="{% url 'automation:workflow_list' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Automations /</a>
+{% if workflow %}Edit {{ workflow.name }}{% else %}New workflow{% endif %}
+{% endblock %}
+{% block content %}
+{{ schema|json_script:"builder-schema" }}
+{{ definition|json_script:"builder-definition" }}
+
+{% if errors %}
+<div class="mb-6 rounded-xl bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">
+  <p class="font-medium">Please fix these before saving:</p>
+  <ul class="mt-2 list-disc space-y-1 pl-5">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<form id="builder-form" method="post" class="form-stack grid gap-6 lg:grid-cols-3">{% csrf_token %}
+  <input type="hidden" name="definition">
+  <div class="space-y-6 lg:col-span-2">
+    <section class="card space-y-4">
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div><label for="wf-name" class="text-sm font-medium text-slate-700">Name</label>
+          <input id="wf-name" name="name" type="text" maxlength="120" required value="{{ definition.name }}" placeholder="e.g. Welcome new leads"></div>
+        <div><label for="wf-description" class="text-sm font-medium text-slate-700">Description <span class="font-normal text-slate-400">(optional)</span></label>
+          <input id="wf-description" name="description" type="text" maxlength="255" value="{{ definition.description }}"></div>
+      </div>
+      <div class="flex flex-wrap gap-6">
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" name="is_active" {% if definition.is_active %}checked{% endif %}> Active (runs automatically)</label>
+        <label class="flex items-center gap-2 text-sm font-medium text-slate-700"><input type="checkbox" name="allow_reenroll" {% if definition.allow_reenroll %}checked{% endif %}> Let the same contact/deal run again</label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="mb-3 flex items-center gap-2 font-semibold"><span class="badge bg-violet-100 text-violet-700">1</span> Trigger</h2>
+      <div id="trigger-root"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="flex items-center gap-2 font-semibold"><span class="badge bg-violet-100 text-violet-700">2</span> Only if… <span class="text-sm font-normal text-slate-400">(optional)</span></h2>
+      <div id="conditions-root"></div>
+    </section>
+
+    <section class="card">
+      <h2 class="mb-3 flex items-center gap-2 font-semibold"><span class="badge bg-violet-100 text-violet-700">3</span> Then do this</h2>
+      <div id="actions-root"></div>
+    </section>
+
+    <div class="flex items-center justify-between">
+      <a href="{% if workflow %}{% url 'automation:workflow_detail' workflow.pk %}{% else %}{% url 'automation:workflow_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+      <button class="btn btn-primary">Save workflow</button>
+    </div>
+  </div>
+
+  <aside class="space-y-6 text-sm">
+    <div class="card">
+      <h2 class="font-semibold">How it works</h2>
+      <ol class="mt-2 list-decimal space-y-1 pl-5 text-slate-600">
+        <li>The <strong>trigger</strong> is the event that starts it.</li>
+        <li><strong>Conditions</strong> decide which contacts or deals go in.</li>
+        <li><strong>Steps</strong> run in order. A <em>Wait</em> pauses the run; <em>Continue only if…</em> can stop it.</li>
+      </ol>
+      <p class="mt-3 text-slate-500">Each contact/deal goes through once unless you allow it to run again. Workflows can trigger each other up to 3 levels deep.</p>
+    </div>
+    <div class="card">
+      <h2 class="font-semibold">Variables</h2>
+      <p class="mt-1 text-xs text-slate-500">Use in emails, SMS, task titles and notes.</p>
+      <ul class="mt-2 space-y-1 font-mono text-xs text-violet-700">
+        <li>{% templatetag openvariable %} contact.first_name {% templatetag closevariable %}</li>
+        <li>{% templatetag openvariable %} contact.full_name {% templatetag closevariable %}</li>
+        <li>{% templatetag openvariable %} company.name {% templatetag closevariable %}</li>
+        <li>{% templatetag openvariable %} deal.title {% templatetag closevariable %}</li>
+        <li>{% templatetag openvariable %} deal.value {% templatetag closevariable %}</li>
+        <li>{% templatetag openvariable %} user.full_name {% templatetag closevariable %}</li>
+        <li>{% templatetag openvariable %} org.name {% templatetag closevariable %}</li>
+      </ul>
+      <p class="mt-2 text-xs text-slate-500">Fallback: <code>|default:"there"</code></p>
+    </div>
+  </aside>
+</form>
+<script src="{% static 'js/workflow-builder.js' %}" defer></script>
+{% endblock %}

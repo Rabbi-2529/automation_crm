@@ -72,6 +72,7 @@ class ActivityKind(models.TextChoices):
     SMS_RECEIVED = "sms_received", "SMS received"
     MESSAGE_FAILED = "message_failed", "Message failed"
     CALL_LOGGED = "call_logged", "Call logged"
+    AUTOMATION = "automation", "Automation"
 
 
 class Activity(OrgScopedModel):
@@ -101,3 +102,8 @@ class Activity(OrgScopedModel):
 
     def __str__(self):
         return self.summary
+
+    @property
+    def automation_name(self):
+        """Workflow that caused this event, if any (templates can't read the "_automation" key directly)."""
+        return ((self.data or {}).get("_automation") or {}).get("name")

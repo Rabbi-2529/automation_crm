@@ -122,6 +122,7 @@ class ContactDetailView(OrgMemberRequiredMixin, OrgScopedQuerysetMixin, DetailVi
             custom_values=custom_fields.display(defs, contact.custom_fields),
             activities=timeline_for(contact)[:100],
             deals=contact.deals.select_related("stage", "pipeline").order_by("status", "-created_at"),
+            workflow_runs=contact.workflow_runs.select_related("workflow")[:5],
             tasks=contact.tasks.open().select_related("assignee"),
             attachments=contact.attachments.select_related("uploaded_by"),
             note_form=NoteForm(),

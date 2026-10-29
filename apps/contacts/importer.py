@@ -164,7 +164,7 @@ class ContactImporter:
 
         verb = "Updated from" if existing else "Imported from"
         record(org=self.org, kind=ActivityKind.IMPORTED, actor=self.job.created_by, contact=contact,
-               summary=f"{verb} {self.job.original_name}", data={"import_job": self.job.pk})
+               summary=f"{verb} {self.job.original_name}", data={"import_job": self.job.pk, "created": not existing})
         return "updated" if existing else "created"
 
     def company(self, name):

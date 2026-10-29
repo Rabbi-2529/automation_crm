@@ -12,8 +12,8 @@ ThingBD's ([thingbd.com](https://thingbd.com/)) multi-tenant CRM built on Django
 | 1 | Contacts, companies, tags, custom fields, notes, files, timeline, CSV import/export | ✅ done |
 | 2 | Pipelines, deals, kanban, won/lost, tasks & email reminders | ✅ done |
 | 3 | Email & SMS (SMTP/IMAP, Twilio, BD HTTP gateways), templates, inbox, open/click tracking, call logs, calendar | ✅ done |
-| 4 | Automation engine | next |
-| 5 | Web forms, lead scoring, drip campaigns | |
+| 4 | Automation engine: triggers, conditions, actions, waits, builder, run logs, webhooks | ✅ done |
+| 5 | Web forms, lead scoring, drip campaigns | next |
 | 6 | Reports & dashboards | |
 | 7 | REST API, webhooks, integrations | |
 | 8 | Hardening, backups, production deploy | |
@@ -38,7 +38,7 @@ Open http://localhost:8000/accounts/signup/ (the preview config in `.claude/laun
 docker compose up --build
 ```
 
-Services: `web` (:8000), `worker`, `beat`, `db` (Postgres 16), `redis`. Then visit **System status** as an admin and click *Run test task* to confirm the worker answers.
+Services: `migrate` (runs once, first), `web` (:8000), `worker`, `beat`, `db` (Postgres 16), `redis`. After changing `requirements.txt`, run `docker compose up --build`; Docker's Postgres is a separate database from your local SQLite. Then visit **System status** as an admin and click *Run test task* to confirm the worker answers.
 
 ## Tests
 
@@ -58,6 +58,7 @@ apps/activities/   Activity timeline, Note, Attachment; services.record() is the
 apps/pipeline/     Pipeline, Stage, Deal, LostReason; kanban board, won/lost, services.py owns every deal state change
 apps/tasks/        Task with due time + reminder; Celery beat job (or `manage.py send_task_reminders`) emails reminders; FullCalendar feed
 apps/messaging/    ChannelSettings (encrypted secrets), templates, Conversation/Message, tracking, IMAP + Twilio inbound, call logs
+apps/automation/   Workflow/Action/Run/StepLog; registry.py (vocabulary), engine.py, actions.py, conditions.py, builder UI
 static/js/ui.js    Select2 on every form select, AJAX pickers, DataTables (client + server side); static/css/ui.css themes them
 templates/         base + app/auth layouts, shared form partial
 ```
@@ -94,6 +95,17 @@ Admins set it up under **Settings → Email & SMS**:
 - **SMS**: Twilio (with signed inbound webhook) or any HTTP gateway URL with `{to}`, `{message}`, `{sender}`, `{api_key}` (BulkSMSBD, SSL Wireless, …). Numbers are normalised to `8801XXXXXXXXX`. The *Console* provider prints instead of sending for development.
 - SMTP/IMAP passwords and SMS keys are encrypted with `FIELD_ENCRYPTION_KEY`. Set it once per environment; changing it means re-entering them.
 - Templates support `{{ contact.first_name }}`, `{{ deal.value }}`, `{{ user.full_name }}` and more, with `|default:"…"` fallbacks. Only whitelisted values are reachable.
+
+## Automations (Phase 4)
+
+**Automations** in the sidebar. A workflow is *trigger → optional conditions → ordered steps*:
+
+- **Triggers**: contact created / field changed / lifecycle changed / tag added / owner changed / inactive for N days; deal created / moved / won / lost / closing in N days; task completed; email opened / clicked / received; SMS received; call logged; incoming webhook.
+- **Conditions**: any contact/deal field incl. custom fields, tags, owner, days since created / last activity; all-or-any.
+- **Steps**: send email/SMS (as the record owner or workflow creator), email a teammate, create task, assign owner (specific or round robin), set lifecycle, update field, add/remove tag, add note, create deal, move deal, signed webhook (private IPs blocked), **wait**, **continue only if…**
+- Each record runs once unless re-enrollment is allowed. Workflows may trigger each other up to 3 levels deep and never re-trigger themselves.
+- Runs and every step are logged (Automations → workflow → Log). "Run it now" tests a workflow on one contact. Four recipes get you started.
+- Engine: `activities.services.record()` → `automation.events.dispatch()` (only queues work if a matching live workflow exists) → Celery `process_activity`. Beat resumes waits every minute and scans time-based triggers every 15 minutes.
 
 ## Timeline events → automations
 

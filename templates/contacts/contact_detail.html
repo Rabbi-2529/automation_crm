@@ -48,6 +48,19 @@
 
     {% include "pipeline/partials/deals_card.html" with target="contact" obj=contact %}
     {% include "tasks/partials/task_panel.html" with target="contact" obj=contact %}
+    {% if workflow_runs %}
+    <div class="card">
+      <h2 class="font-semibold">Automations</h2>
+      <ul class="mt-3 divide-y divide-slate-100 text-sm">
+        {% for run in workflow_runs %}
+        <li class="flex items-center justify-between gap-2 py-2">
+          <a href="{% url 'automation:run_detail' run.pk %}" class="min-w-0 truncate hover:text-violet-700">{{ run.workflow.name }}</a>
+          {% include "automation/partials/run_status.html" with status=run.status label=run.get_status_display %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
     {% include "contacts/partials/attachments.html" with target="contact" obj=contact %}
   </div>
 

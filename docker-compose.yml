@@ -1,7 +1,10 @@
 # Local development stack: Django dev server, Celery worker + beat, Postgres, Redis.
 # Production overrides (gunicorn, nginx, TLS, backups) come in Phase 8.
+# After changing requirements.txt, rebuild: docker compose up --build
+# After pulling new migrations:            docker compose up -d   (the migrate service runs first)
 x-app: &app
   build: .
+  image: automation-crm-app  # one image shared by migrate, web, worker and beat
   env_file: .env
   environment:
     DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -11,11 +14,15 @@ x-app: &app
     ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
   volumes:
     - .:/app
-  depends_on:
-    db:
-      condition: service_healthy
-    redis:
-      condition: service_healthy
+
+# web, worker and beat start only after migrations finished, so nothing queries a table that doesn't exist yet.
+x-after-migrate: &after-migrate
+  db:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+  migrate:
+    condition: service_completed_successfully
 
 services:
   db:
@@ -44,19 +51,30 @@ services:
       timeout: 3s
       retries: 10
 
+  migrate:
+    <<: *app
+    command: python manage.py migrate --noinput
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
   web:
     <<: *app
-    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    command: python manage.py runserver 0.0.0.0:8000
     ports:
       - "8000:8000"
+    depends_on: *after-migrate
 
   worker:
     <<: *app
     command: celery -A config worker --loglevel=info
+    depends_on: *after-migrate
 
   beat:
     <<: *app
     command: celery -A config beat --loglevel=info --schedule /tmp/celerybeat-schedule
+    depends_on: *after-migrate
 
 volumes:
   pgdata:

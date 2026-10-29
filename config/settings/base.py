@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "apps.pipeline",
     "apps.tasks",
     "apps.messaging",
+    "apps.automation",
 ]
 
 MIDDLEWARE = [
@@ -117,6 +118,8 @@ CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULE = {
     "send-task-reminders": {"task": "apps.tasks.tasks.send_task_reminders", "schedule": 60.0},
     "fetch-inbound-email": {"task": "apps.messaging.tasks.fetch_all_inboxes", "schedule": 120.0},
+    "resume-workflow-waits": {"task": "apps.automation.tasks.resume_waiting_runs", "schedule": 60.0},
+    "scan-scheduled-triggers": {"task": "apps.automation.tasks.scan_scheduled_triggers", "schedule": 900.0},
 }
 
 LOGGING = {

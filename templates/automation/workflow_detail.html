@@ -1,0 +1,78 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ workflow.name }}{% endblock %}
+{% block page_title %}
+<a href="{% url 'automation:workflow_list' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Automations /</a> {{ workflow.name }}
+{% if workflow.is_active %}<span class="badge ml-2 bg-emerald-100 align-middle text-emerald-700">● Live</span>{% else %}<span class="badge ml-2 bg-slate-100 align-middle text-slate-500">Paused</span>{% endif %}
+{% endblock %}
+{% block page_actions %}
+{% if current_membership.is_manager %}
+<form method="post" action="{% url 'automation:workflow_toggle' workflow.pk %}">{% csrf_token %}
+  <button class="btn {% if workflow.is_active %}btn-secondary{% else %}bg-emerald-600 text-white hover:bg-emerald-700{% endif %}">{% if workflow.is_active %}Pause{% else %}Turn on{% endif %}</button>
+</form>
+<a href="{% url 'automation:workflow_edit' workflow.pk %}" class="btn btn-secondary">Edit</a>
+<a href="{% url 'automation:workflow_delete' workflow.pk %}" class="btn btn-secondary text-red-600">Delete</a>
+{% endif %}
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6">
+    <div class="card text-sm">
+      {% if workflow.description %}<p class="mb-4 text-slate-600">{{ workflow.description }}</p>{% endif %}
+      <p class="text-xs font-semibold uppercase tracking-wider text-violet-600">When</p>
+      <p class="mt-1">{{ trigger_text }}</p>
+      <p class="mt-4 text-xs font-semibold uppercase tracking-wider text-violet-600">Only if</p>
+      <p class="mt-1 {% if not conditions_text %}text-slate-400{% endif %}">{{ conditions_text|default:"Always" }}</p>
+      <p class="mt-4 text-xs font-semibold uppercase tracking-wider text-violet-600">Then</p>
+      <ol class="mt-2 space-y-2">
+        {% for action, text in action_texts %}
+        <li class="flex gap-2"><span class="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-violet-100 text-[11px] font-semibold text-violet-700">{{ forloop.counter }}</span><span>{{ text }}</span></li>
+        {% endfor %}
+      </ol>
+      <p class="mt-4 text-xs text-slate-500">{% if workflow.allow_reenroll %}Records can go through more than once.{% else %}Each record goes through once.{% endif %}</p>
+    </div>
+
+    {% if workflow.trigger_type == "webhook" %}
+    <div class="card text-sm">
+      <h2 class="font-semibold">Webhook URL</h2>
+      <p class="mt-1 text-slate-500">POST JSON with <code>email</code> or <code>phone</code> (plus optional <code>first_name</code>, <code>last_name</code>, <code>job_title</code>). Keep this URL secret.</p>
+      <code class="mt-2 block break-all rounded bg-slate-100 p-2 text-xs">{{ webhook_url }}</code>
+    </div>
+    {% endif %}
+
+    {% if current_membership.is_manager %}
+    <form method="post" action="{% url 'automation:workflow_test' workflow.pk %}" class="card form-stack space-y-3 text-sm">{% csrf_token %}
+      <h2 class="font-semibold">Run it now on a contact</h2>
+      <p class="text-slate-500">Runs every step for real (emails are sent). Conditions still apply.</p>
+      {{ test_picker }}
+      <button class="btn btn-secondary">Run now</button>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="lg:col-span-2">
+    <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div class="card p-4"><p class="text-xs text-slate-500">Completed</p><p class="text-2xl font-semibold text-emerald-600">{{ counts.completed }}</p></div>
+      <div class="card p-4"><p class="text-xs text-slate-500">Waiting</p><p class="text-2xl font-semibold text-amber-600">{{ counts.waiting }}</p></div>
+      <div class="card p-4"><p class="text-xs text-slate-500">Stopped</p><p class="text-2xl font-semibold text-slate-600">{{ counts.stopped }}</p></div>
+      <div class="card p-4"><p class="text-xs text-slate-500">Failed</p><p class="text-2xl font-semibold {% if counts.failed %}text-red-600{% else %}text-slate-600{% endif %}">{{ counts.failed }}</p></div>
+    </div>
+    <div class="card overflow-x-auto p-0">
+      <table class="table" data-datatable data-empty="No runs yet.">
+        <thead class="bg-slate-50"><tr><th>Started</th><th>Contact / deal</th><th>Trigger</th><th>Status</th><th>Step</th><th data-orderable="false"></th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for run in runs %}
+          <tr>
+            <td data-order="{{ run.created_at|date:'U' }}" class="whitespace-nowrap text-slate-500">{{ run.created_at|date:"d M H:i" }}</td>
+            <td>{% if run.deal %}<a href="{% url 'pipeline:deal_detail' run.deal_id %}" class="hover:text-violet-700">{{ run.deal.title }}</a>{% elif run.contact %}<a href="{% url 'contacts:contact_detail' run.contact_id %}" class="hover:text-violet-700">{{ run.contact.display_name }}</a>{% else %}—{% endif %}</td>
+            <td class="max-w-xs truncate text-slate-500">{{ run.trigger_summary }}</td>
+            <td>{% include "automation/partials/run_status.html" with status=run.status label=run.get_status_display %}{% if run.status == "waiting" %}<span class="block text-xs text-slate-400">until {{ run.resume_at|date:"d M H:i" }}</span>{% endif %}</td>
+            <td>{{ run.current_step }}/{{ action_texts|length }}</td>
+            <td class="text-right"><a href="{% url 'automation:run_detail' run.pk %}" class="text-sm text-violet-600 hover:underline">Log</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
