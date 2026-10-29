@@ -1,0 +1,107 @@
+{% extends "layouts/app.html" %}
+{% load humanize %}
+{% block title %}Deals{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>{% endblock %}
+{% block page_title %}Deals{% endblock %}
+{% block page_actions %}
+<a href="{% url 'pipeline:deal_list' %}?pipeline={{ pipeline.pk }}" class="btn btn-secondary">List view</a>
+<a href="{% url 'pipeline:deal_create' %}" class="btn btn-primary">+ New deal</a>
+{% endblock %}
+{% block content %}
+{% csrf_token %}
+<form class="mb-4 flex flex-wrap items-center gap-3 form-stack" method="get">
+  <select name="pipeline" class="!mt-0 !w-auto" onchange="this.form.submit()" aria-label="Pipeline">
+    {% for p in pipelines %}<option value="{{ p.pk }}" {% if p.pk == pipeline.pk %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+  </select>
+  <select name="owner" class="!mt-0 !w-auto" onchange="this.form.submit()" aria-label="Owner">
+    <option value="">Everyone's deals</option>
+    <option value="me" {% if filters.owner == "me" %}selected{% endif %}>My deals</option>
+    {% for u in owners %}<option value="{{ u.pk }}" {% if filters.owner == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+  </select>
+  <input type="search" name="q" value="{{ filters.q }}" placeholder="Search deals…" class="!mt-0 !w-56" aria-label="Search deals">
+  <span class="ml-auto text-sm text-slate-500">
+    Open: <strong class="text-slate-800">{{ current_org.currency }} <span id="open-total">{{ open_total|floatformat:0|intcomma }}</span></strong>
+    · Weighted: <strong class="text-slate-800">{{ current_org.currency }} {{ weighted_total|floatformat:0|intcomma }}</strong>
+  </span>
+</form>
+
+<div class="flex gap-4 overflow-x-auto pb-4" id="board" data-currency="{{ current_org.currency }}">
+  {% for col in columns %}
+  <section class="flex w-72 shrink-0 flex-col rounded-xl bg-slate-100 p-3">
+    <header class="mb-3">
+      <div class="flex items-center justify-between">
+        <h2 class="font-semibold text-slate-800">{{ col.stage.name }}</h2>
+        <span class="badge bg-white text-slate-600" data-count-for="{{ col.stage.pk }}">{{ col.deals|length }}</span>
+      </div>
+      <p class="text-xs text-slate-500">{{ current_org.currency }} <span data-value-for="{{ col.stage.pk }}">{{ col.totals.value|default:0|floatformat:0|intcomma }}</span> · {{ col.stage.probability }}%</p>
+    </header>
+    <div class="kanban-col flex min-h-24 flex-1 flex-col gap-2" data-stage="{{ col.stage.pk }}">
+      {% for deal in col.deals %}{% include "pipeline/partials/deal_card.html" %}{% endfor %}
+    </div>
+    <a href="{% url 'pipeline:deal_create' %}?stage={{ col.stage.pk }}" class="mt-2 rounded-lg px-2 py-1.5 text-center text-sm text-slate-500 hover:bg-white hover:text-violet-700">+ Add deal</a>
+  </section>
+  {% empty %}
+  <div class="card w-full text-center text-sm text-slate-500">This pipeline has no stages. <a href="{% url 'pipeline:pipeline_edit' pipeline.pk %}" class="text-violet-600 hover:underline">Add some</a>.</div>
+  {% endfor %}
+</div>
+
+<div class="mt-2 grid gap-4 sm:grid-cols-2">
+  <div class="drop-zone rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 p-4 text-center text-sm text-emerald-700" data-drop="won">
+    Drop here to mark <strong>won</strong>
+    <span class="block text-xs">{{ closed.won.count|default:0 }} won · {{ current_org.currency }} {{ closed.won.value|default:0|floatformat:0|intcomma }}</span>
+  </div>
+  <div class="drop-zone rounded-xl border-2 border-dashed border-red-300 bg-red-50 p-4 text-center text-sm text-red-700" data-drop="lost">
+    Drop here to mark <strong>lost</strong>
+    <span class="block text-xs">{{ closed.lost.count|default:0 }} lost</span>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+    const money = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+    const url = (id, action) => `{% url 'pipeline:deal_move' 0 %}`.replace("/0/move/", `/${id}/${action}/`);
+
+    function recount() {
+      let open = 0;
+      document.querySelectorAll(".kanban-col").forEach(col => {
+        const cards = [...col.querySelectorAll("[data-deal]")];
+        const sum = cards.reduce((total, card) => total + parseFloat(card.dataset.value || 0), 0);
+        open += sum;
+        document.querySelector(`[data-count-for="${col.dataset.stage}"]`).textContent = cards.length;
+        document.querySelector(`[data-value-for="${col.dataset.stage}"]`).textContent = money.format(sum);
+      });
+      document.getElementById("open-total").textContent = money.format(open);
+    }
+
+    document.querySelectorAll(".kanban-col").forEach(col => new Sortable(col, {
+      group: "deals", animation: 150, ghostClass: "opacity-40",
+      onEnd: async event => {
+        if (event.to.classList.contains("drop-zone")) return;  // handled by the zone's onAdd
+        if (event.from === event.to && event.oldIndex === event.newIndex) return;
+        recount();
+        const id = event.item.dataset.deal;
+        const order = [...event.to.querySelectorAll("[data-deal]")].map(card => Number(card.dataset.deal));
+        const response = await fetch(url(id, "move"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+          body: JSON.stringify({ stage: Number(event.to.dataset.stage), order }),
+        });
+        if (!response.ok) { alert("Couldn't move the deal. The board will reload."); location.reload(); }
+      },
+    }));
+
+    document.querySelectorAll(".drop-zone").forEach(zone => new Sortable(zone, {
+      group: { name: "deals", pull: false, put: true }, sort: false,
+      onAdd: event => {
+        const id = event.item.dataset.deal;
+        if (zone.dataset.drop === "lost") { location.href = url(id, "lost"); return; }
+        const form = Object.assign(document.createElement("form"), { method: "post", action: url(id, "won") });
+        form.innerHTML = `<input type="hidden" name="csrfmiddlewaretoken" value="${csrf}"><input type="hidden" name="next" value="${location.pathname + location.search}">`;
+        document.body.appendChild(form);
+        form.submit();
+      },
+    }));
+  });
+</script>
+{% endblock %}

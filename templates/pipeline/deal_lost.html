@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% block title %}Mark as lost{% endblock %}
+{% block page_title %}Mark “{{ deal.title }}” as lost{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-lg space-y-6">{% csrf_token %}
+  {% include "partials/form.html" %}
+  <div class="flex justify-between">
+    <a href="{% url 'pipeline:deal_detail' deal.pk %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-danger">Mark as lost</button>
+  </div>
+</form>
+{% endblock %}

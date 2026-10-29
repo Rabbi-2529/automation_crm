@@ -1,0 +1,113 @@
+/* ThingBD CRM theme for Select2, DataTables and FullCalendar.
+   Matches the Tailwind form styling in base.html: rounded-lg, slate-300 ring, violet focus. */
+
+:root {
+  --crm-violet: #8b5cf6;
+  --crm-violet-dark: #7c3aed;
+  --crm-violet-soft: #ede9fe;
+  --crm-ink: #0f172a;
+  --crm-muted: #64748b;
+  --crm-line: #cbd5e1;
+  --crm-line-soft: #e2e8f0;
+}
+
+/* ---------- Select2 ---------- */
+.select2-container { width: 100% !important; font-size: 0.875rem; }
+.form-stack .select2-container { margin-top: 0.25rem; }
+.select2-container--default .select2-selection--single,
+.select2-container--default .select2-selection--multiple {
+  min-height: 38px; border: 0; border-radius: 0.5rem; background: #fff;
+  box-shadow: inset 0 0 0 1px var(--crm-line);
+}
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+  line-height: 38px; padding-left: 0.75rem; padding-right: 2rem; color: var(--crm-ink);
+}
+.select2-container--default .select2-selection--single .select2-selection__placeholder { color: #94a3b8; }
+.select2-container--default .select2-selection--single .select2-selection__arrow { height: 36px; right: 6px; }
+.select2-container--default .select2-selection--single .select2-selection__clear { margin-right: 1.5rem; color: #94a3b8; }
+.select2-container--default.select2-container--focus .select2-selection--multiple,
+.select2-container--default.select2-container--open .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--multiple {
+  box-shadow: inset 0 0 0 2px var(--crm-violet);
+}
+.select2-container--default .select2-selection--multiple { padding: 3px 6px; }
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+  margin: 3px 4px 3px 0; padding: 1px 8px 1px 22px; border: 0; border-radius: 9999px;
+  background: var(--crm-violet-soft); color: #5b21b6; font-weight: 500;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+  border: 0; color: #7c3aed; padding: 0 6px; top: 1px;
+}
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover { background: transparent; color: #4c1d95; }
+.select2-container--default .select2-search--inline .select2-search__field { margin-top: 5px; font-family: inherit; }
+.select2-dropdown {
+  border: 0; border-radius: 0.5rem; overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgb(15 23 42 / 0.15), 0 0 0 1px var(--crm-line-soft);
+}
+.select2-container--open .select2-dropdown--below { margin-top: 4px; }
+.select2-container--open .select2-dropdown--above { margin-top: -4px; }
+.select2-container--default .select2-search--dropdown .select2-search__field {
+  border: 0; border-radius: 0.375rem; padding: 6px 10px; box-shadow: inset 0 0 0 1px var(--crm-line); outline: none;
+}
+.select2-container--default .select2-search--dropdown .select2-search__field:focus { box-shadow: inset 0 0 0 2px var(--crm-violet); }
+.select2-results__option { padding: 7px 12px; }
+.select2-container--default .select2-results__option--highlighted.select2-results__option--selectable { background: var(--crm-violet); }
+.select2-container--default .select2-results__option--selected { background: var(--crm-violet-soft); color: #5b21b6; }
+.select2-container--default .select2-results__group { color: var(--crm-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.select2-result-hint { display: block; font-size: 0.75rem; color: #94a3b8; }
+.select2-results__option--highlighted .select2-result-hint { color: #ede9fe; }
+/* Compact Select2 in filter bars */
+.filter-bar .select2-container { margin-top: 0; }
+
+/* ---------- DataTables ---------- */
+div.dt-container { font-size: 0.875rem; color: var(--crm-ink); }
+div.dt-container .dt-layout-row { margin: 0; padding: 0.75rem 1rem; }
+div.dt-container .dt-layout-row.dt-layout-table { padding: 0; }
+div.dt-container .dt-search input,
+div.dt-container .dt-length select {
+  border: 0; border-radius: 0.5rem; padding: 6px 10px; background: #fff;
+  box-shadow: inset 0 0 0 1px var(--crm-line); outline: none; font-family: inherit;
+}
+div.dt-container .dt-search input { width: 16rem; max-width: 60vw; }
+div.dt-container .dt-search input:focus, div.dt-container .dt-length select:focus { box-shadow: inset 0 0 0 2px var(--crm-violet); }
+div.dt-container .dt-info { color: var(--crm-muted); }
+table.dataTable { border-collapse: collapse !important; }
+table.dataTable > thead > tr > th {
+  background: #f8fafc; color: #475569; font-weight: 600; text-align: left;
+  border-bottom: 1px solid var(--crm-line-soft) !important; padding: 0.75rem 1rem !important;
+}
+table.dataTable > tbody > tr > td { padding: 0.75rem 1rem !important; border-top: 1px solid #f1f5f9 !important; vertical-align: middle; }
+table.dataTable > tbody > tr:hover > td { background: #f8fafc; }
+table.dataTable.no-footer { border-bottom: 0 !important; }
+table.dataTable thead > tr > th.dt-orderable-asc span.dt-column-order,
+table.dataTable thead > tr > th.dt-orderable-desc span.dt-column-order { opacity: 0.6; }
+div.dt-container .dt-paging .dt-paging-button {
+  border: 0 !important; border-radius: 0.5rem !important; padding: 4px 10px !important; margin-left: 2px;
+  color: var(--crm-ink) !important; background: transparent !important;
+}
+div.dt-container .dt-paging .dt-paging-button:hover:not(.disabled) { background: #f1f5f9 !important; }
+div.dt-container .dt-paging .dt-paging-button.current,
+div.dt-container .dt-paging .dt-paging-button.current:hover {
+  background: var(--crm-violet) !important; color: #fff !important;
+}
+div.dt-container .dt-paging .dt-paging-button.disabled { color: #cbd5e1 !important; }
+div.dt-processing > div:last-child > div { background: var(--crm-violet) !important; }
+table.dataTable td.dt-empty { color: var(--crm-muted); padding: 3rem 1rem !important; }
+
+/* ---------- FullCalendar ---------- */
+.fc { --fc-border-color: var(--crm-line-soft); --fc-today-bg-color: #f5f3ff; --fc-event-border-color: transparent;
+      --fc-button-bg-color: #fff; --fc-button-border-color: var(--crm-line); --fc-button-text-color: #334155;
+      --fc-button-hover-bg-color: #f8fafc; --fc-button-hover-border-color: var(--crm-line);
+      --fc-button-active-bg-color: var(--crm-violet); --fc-button-active-border-color: var(--crm-violet);
+      font-size: 0.875rem; }
+.fc .fc-button { border-radius: 0.5rem; font-weight: 500; text-transform: capitalize; box-shadow: none !important; }
+.fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { color: #fff; }
+.fc .fc-toolbar-title { font-size: 1.15rem; font-weight: 600; color: var(--crm-ink); }
+.fc .fc-col-header-cell-cushion, .fc .fc-daygrid-day-number { color: #475569; text-decoration: none; }
+.fc .fc-event { border-radius: 0.375rem; padding: 1px 4px; cursor: pointer; }
+.fc .fc-event.crm-task { background: var(--crm-violet); }
+.fc .fc-event.crm-task-high { background: #dc2626; }
+.fc .fc-event.crm-task-done { background: #cbd5e1; text-decoration: line-through; }
+.fc .fc-event.crm-deal { background: #059669; }
+.fc .fc-daygrid-event-dot { display: none; }
+.fc .fc-daygrid-dot-event .fc-event-title, .fc .fc-daygrid-dot-event .fc-event-time { color: #fff; }

@@ -23,11 +23,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
     "apps.core",
     "apps.accounts",
     "apps.orgs",
     "apps.contacts",
     "apps.activities",
+    "apps.pipeline",
+    "apps.tasks",
+    "apps.messaging",
 ]
 
 MIDDLEWARE = [
@@ -55,6 +59,8 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.orgs.context_processors.current_organization",
+                "apps.tasks.context_processors.task_counts",
+                "apps.messaging.context_processors.inbox_counts",
             ],
         },
     },
@@ -108,7 +114,10 @@ CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TASK_ACKS_LATE = True
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 CELERY_TIMEZONE = TIME_ZONE
-CELERY_BEAT_SCHEDULE = {}
+CELERY_BEAT_SCHEDULE = {
+    "send-task-reminders": {"task": "apps.tasks.tasks.send_task_reminders", "schedule": 60.0},
+    "fetch-inbound-email": {"task": "apps.messaging.tasks.fetch_all_inboxes", "schedule": 120.0},
+}
 
 LOGGING = {
     "version": 1,
@@ -120,3 +129,11 @@ LOGGING = {
 # Uploads (Phase 1)
 ATTACHMENT_MAX_MB = env.int("ATTACHMENT_MAX_MB", default=10)
 IMPORT_MAX_MB = env.int("IMPORT_MAX_MB", default=10)
+
+# Absolute links in emails sent outside a request (task reminders).
+SITE_URL = env("SITE_URL", default="http://localhost:8000")
+
+# Encrypts stored SMTP/IMAP passwords and SMS API keys. Generate once per environment with:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# Changing it later makes saved secrets unreadable (they must be re-entered).
+FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="")

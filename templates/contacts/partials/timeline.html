@@ -10,10 +10,19 @@
     {% for a in activities %}
     <li class="relative">
       <span class="absolute -left-[27px] top-1 grid h-3 w-3 place-items-center rounded-full ring-4 ring-white
-        {% if a.kind == 'note_added' %}bg-violet-500{% elif a.kind == 'stage_changed' %}bg-emerald-500{% elif a.kind == 'owner_changed' %}bg-amber-500{% elif a.kind == 'attachment_added' %}bg-sky-500{% else %}bg-slate-300{% endif %}"></span>
-      <p class="text-sm text-slate-800">{{ a.summary }}</p>
+        {% if a.kind == 'note_added' %}bg-violet-500{% elif a.kind == 'deal_won' %}bg-emerald-600{% elif a.kind == 'deal_lost' %}bg-red-500{% elif a.kind == 'task_completed' %}bg-violet-300{% elif a.kind == 'email_sent' or a.kind == 'email_received' %}bg-sky-500{% elif a.kind == 'sms_sent' or a.kind == 'sms_received' %}bg-emerald-400{% elif a.kind == 'call_logged' %}bg-amber-400{% elif a.kind == 'message_failed' %}bg-red-600{% elif a.kind == 'email_opened' or a.kind == 'email_clicked' %}bg-sky-300{% elif a.kind == 'stage_changed' or a.kind == 'deal_stage_changed' %}bg-emerald-500{% elif a.kind == 'owner_changed' %}bg-amber-500{% elif a.kind == 'attachment_added' %}bg-sky-500{% else %}bg-slate-300{% endif %}"></span>
+      <p class="text-sm text-slate-800">{{ a.summary }}{% if a.deal and target != "deal" %} <a href="{% url 'pipeline:deal_detail' a.deal_id %}" class="text-xs text-violet-600 hover:underline">open deal →</a>{% endif %}</p>
       {% if a.note %}
       <div class="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-200">{{ a.note.body|linebreaksbr }}</div>
+      {% endif %}
+      {% if a.message %}
+      <div class="mt-2 rounded-lg p-3 text-sm ring-1 {% if a.message.direction == 'in' %}bg-white ring-slate-200{% else %}bg-violet-50 ring-violet-100{% endif %}">
+        {% if a.message.subject %}<p class="font-medium">{{ a.message.subject }}</p>{% endif %}
+        <p class="whitespace-pre-line text-slate-700">{{ a.message.body_text|truncatechars:400 }}</p>
+        <a href="{% url 'messaging:inbox' %}?c={{ a.message.conversation_id }}" class="mt-1 inline-block text-xs text-violet-600 hover:underline">Open conversation →</a>
+      </div>
+      {% elif a.kind == "call_logged" and a.data.notes %}
+      <div class="mt-2 rounded-lg bg-amber-50 p-3 text-sm text-slate-700 ring-1 ring-amber-100">{{ a.data.notes|linebreaksbr }}</div>
       {% endif %}
       {% if a.attachment %}
       <a href="{% url 'activities:attachment_download' a.attachment.pk %}" class="mt-1 inline-block text-sm text-violet-600 hover:underline">Download {{ a.attachment.original_name }}</a>

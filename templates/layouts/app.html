@@ -17,8 +17,14 @@
         {% url "contacts:import_list" as imports_url %}
         {% include "partials/nav_link.html" with href=imports_url label="Imports" match="import" %}
       {% endif %}
-      {% include "partials/nav_link.html" with label="Deals" soon="Phase 2" %}
-      {% include "partials/nav_link.html" with label="Inbox" soon="Phase 3" %}
+      {% url "pipeline:deal_board" as deals_url %}
+      {% include "partials/nav_link.html" with href=deals_url label="Deals" match="deal" %}
+      {% url "tasks:task_list" as tasks_url %}
+      {% include "partials/nav_link.html" with href=tasks_url label="Tasks" match="task" badge=my_task_due_count badge_alert=my_task_overdue_count %}
+      {% url "tasks:calendar" as calendar_url %}
+      {% include "partials/nav_link.html" with href=calendar_url label="Calendar" match="calendar" %}
+      {% url "messaging:inbox" as inbox_url %}
+      {% include "partials/nav_link.html" with href=inbox_url label="Inbox" match="inbox" badge=inbox_unread_count %}
       {% include "partials/nav_link.html" with label="Automations" soon="Phase 4" %}
       {% include "partials/nav_link.html" with label="Reports" soon="Phase 6" %}
       <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">Workspace</p>
@@ -29,10 +35,16 @@
         {% include "partials/nav_link.html" with href=members_url label="Members" match="member" %}
         {% url "contacts:tag_list" as tags_url %}
         {% include "partials/nav_link.html" with href=tags_url label="Tags" match="tag_" %}
+        {% url "messaging:template_list" as templates_url %}
+        {% include "partials/nav_link.html" with href=templates_url label="Message templates" match="template" %}
+        {% url "pipeline:pipeline_list" as pipelines_url %}
+        {% include "partials/nav_link.html" with href=pipelines_url label="Pipelines" match="pipeline" %}
       {% endif %}
       {% if current_membership.is_admin %}
         {% url "orgs:settings" as settings_url %}
         {% include "partials/nav_link.html" with href=settings_url label="Settings" match="settings" %}
+        {% url "messaging:channel_settings" as channels_url %}
+        {% include "partials/nav_link.html" with href=channels_url label="Email & SMS" match="channel" %}
         {% url "contacts:custom_field_list" as fields_url %}
         {% include "partials/nav_link.html" with href=fields_url label="Custom fields" match="custom_field" %}
         {% url "core:system" as system_url %}

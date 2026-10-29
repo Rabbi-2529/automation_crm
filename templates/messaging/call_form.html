@@ -1,0 +1,15 @@
+{% extends "layouts/app.html" %}
+{% block title %}Log a call{% endblock %}
+{% block page_title %}
+<a href="{% url 'contacts:contact_detail' contact.pk %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">{{ contact.display_name }} /</a> Log a call
+{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-2xl space-y-6">{% csrf_token %}
+  {% if contact.phone %}<p class="text-sm text-slate-500">Phone: <a href="tel:{{ contact.phone }}" class="font-medium text-violet-600">{{ contact.phone }}</a></p>{% endif %}
+  {% include "partials/form.html" %}
+  <div class="flex justify-between">
+    <a href="{% url 'contacts:contact_detail' contact.pk %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary">Save call</button>
+  </div>
+</form>
+{% endblock %}

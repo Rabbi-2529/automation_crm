@@ -1,0 +1,61 @@
+{% extends "layouts/app.html" %}
+{% block title %}Calendar{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>{% endblock %}
+{% block page_title %}Calendar{% endblock %}
+{% block page_actions %}
+<a href="{% url 'tasks:task_list' %}" class="btn btn-secondary">Task list</a>
+<a href="{% url 'tasks:task_create' %}?next={% url 'tasks:calendar' %}" class="btn btn-primary">+ New task</a>
+{% endblock %}
+{% block content %}
+{% csrf_token %}
+<form id="calendar-filters" class="card filter-bar form-stack mb-4 flex flex-wrap items-center gap-4 p-4">
+  <div class="w-56">
+    <select name="assignee" aria-label="Whose calendar">
+      <option value="me">My calendar</option>
+      <option value="all">Everyone</option>
+      {% for u in users %}{% if u != request.user %}<option value="{{ u.pk }}">{{ u.display_name }}</option>{% endif %}{% endfor %}
+    </select>
+  </div>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="tasks" checked> <span class="h-3 w-3 rounded-sm bg-[#8b5cf6]"></span> Tasks</label>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="deals" checked> <span class="h-3 w-3 rounded-sm bg-emerald-600"></span> Deal close dates</label>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="done"> Show completed</label>
+  <span class="ml-auto text-xs text-slate-500">Drag to reschedule · click a day to add a task</span>
+</form>
+<div class="card p-4"><div id="calendar"></div></div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+    const filters = document.getElementById("calendar-filters");
+    const params = () => {
+      const show = ["tasks", "deals"].filter(name => filters.elements[name].checked).join(",");
+      return { assignee: filters.elements.assignee.value, show, done: filters.elements.done.checked ? "1" : "0" };
+    };
+
+    const calendar = new FullCalendar.Calendar(document.getElementById("calendar"), {
+      initialView: "dayGridMonth",
+      headerToolbar: { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek" },
+      buttonText: { today: "Today", month: "Month", week: "Week", day: "Day", list: "Agenda" },
+      firstDay: 6,  // Saturday: the Bangladesh work week
+      height: "auto", nowIndicator: true, dayMaxEvents: 4, eventTimeFormat: { hour: "2-digit", minute: "2-digit", hour12: false },
+      editable: true, eventDurationEditable: false,
+      events: { url: "{% url 'tasks:calendar_events' %}", extraParams: params, failure: () => alert("Couldn't load the calendar.") },
+      dateClick: info => {
+        location.href = `{% url 'tasks:task_create' %}?due_date=${info.dateStr.slice(0, 10)}&next={% url 'tasks:calendar' %}`;
+      },
+      eventDrop: async info => {
+        const props = info.event.extendedProps;
+        const response = await fetch("{% url 'tasks:calendar_move' %}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+          body: JSON.stringify({ kind: props.kind, pk: props.pk, start: info.event.startStr, allDay: info.event.allDay && props.kind === "task" }),
+        });
+        if (!response.ok) { info.revert(); alert("You can't move this item."); }
+        else if (props.kind === "task") calendar.refetchEvents();
+      },
+    });
+    calendar.render();
+    filters.addEventListener("change", () => calendar.refetchEvents());
+  });
+</script>
+{% endblock %}

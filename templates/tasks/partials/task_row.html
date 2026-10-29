@@ -1,0 +1,21 @@
+{# Args: task, next, show_related (bool) #}
+<li id="task-{{ task.pk }}" class="flex items-start gap-3 py-2.5 {% if task.is_done %}opacity-60{% endif %}">
+  <form hx-post="{% url 'tasks:task_toggle' task.pk %}" hx-target="#task-{{ task.pk }}" hx-swap="outerHTML" method="post" action="{% url 'tasks:task_toggle' task.pk %}">
+    {% csrf_token %}<input type="hidden" name="next" value="{{ next }}">
+    <button class="mt-0.5 grid h-5 w-5 place-items-center rounded-full ring-2 {% if task.is_done %}bg-violet-600 text-white ring-violet-600{% else %}ring-slate-300 hover:ring-violet-500{% endif %}" aria-label="{% if task.is_done %}Mark as not done{% else %}Mark as done{% endif %}">{% if task.is_done %}✓{% endif %}</button>
+  </form>
+  <div class="min-w-0 flex-1 text-sm">
+    <p class="{% if task.is_done %}line-through{% endif %} font-medium text-slate-800">
+      {% if task.priority == 'high' %}<span class="text-red-500" title="High priority">!</span>{% endif %}
+      <a href="{% url 'tasks:task_edit' task.pk %}?next={{ next|urlencode }}" class="hover:text-violet-700">{{ task.title }}</a>
+      <span class="badge ml-1 bg-slate-100 text-slate-500">{{ task.get_kind_display }}</span>
+    </p>
+    <p class="text-xs text-slate-500">
+      {% if task.due_at %}<span class="{% if task.is_overdue %}font-medium text-red-600{% endif %}">{{ task.due_at|date:"D d M, H:i" }}</span>{% endif %}
+      {% if task.reminder %}<span title="{{ task.get_reminder_display }}">🔔</span>{% endif %}
+      {% if show_related and task.related %} · {% if task.deal %}<a href="{% url 'pipeline:deal_detail' task.deal_id %}" class="hover:text-violet-700">{{ task.deal.title }}</a>{% elif task.contact %}<a href="{% url 'contacts:contact_detail' task.contact_id %}" class="hover:text-violet-700">{{ task.contact.display_name }}</a>{% else %}<a href="{% url 'contacts:company_detail' task.company_id %}" class="hover:text-violet-700">{{ task.company.name }}</a>{% endif %}{% endif %}
+      {% if task.assignee and task.assignee != request.user %} · {{ task.assignee.display_name }}{% elif not task.assignee %} · Unassigned{% endif %}
+      {% if task.is_done %} · done {{ task.completed_at|timesince }} ago{% endif %}
+    </p>
+  </div>
+</li>

@@ -1,0 +1,1 @@
+<span class="badge {% if deal.status == 'won' %}bg-emerald-100 text-emerald-700{% elif deal.status == 'lost' %}bg-red-100 text-red-700{% else %}bg-sky-100 text-sky-700{% endif %}">{{ deal.get_status_display }}</span>

@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if object %}Edit task{% else %}New task{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit task{% else %}New task{% endif %}{% endblock %}
+{% block content %}
+<form method="post" action="{% if object %}{% url 'tasks:task_edit' object.pk %}{% else %}{% url 'tasks:task_create' %}{% endif %}" class="card max-w-2xl space-y-6">{% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+  {% with related=form.instance.related %}
+  {% if related or form.initial.contact or form.initial.deal or form.initial.company %}
+  <p class="text-sm text-slate-500">Linked to:
+    <span class="font-medium text-slate-800">{% if related %}{{ related.display_name|default:related.name }}{% else %}the record you came from{% endif %}</span></p>
+  {% endif %}
+  {% endwith %}
+  {% include "partials/form.html" %}
+  <div class="flex items-center justify-between">
+    <a href="{{ next|default:'/tasks/' }}" class="btn btn-secondary">Cancel</a>
+    <div class="flex gap-2">
+      {% if object %}<a href="{% url 'tasks:task_delete' object.pk %}?next={{ next|urlencode }}" class="btn btn-secondary text-red-600">Delete</a>{% endif %}
+      <button class="btn btn-primary">Save task</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

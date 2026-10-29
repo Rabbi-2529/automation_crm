@@ -1,0 +1,45 @@
+{% extends "layouts/app.html" %}
+{% block title %}Tasks{% endblock %}
+{% block page_title %}Tasks{% endblock %}
+{% block page_actions %}<a href="{% url 'tasks:task_create' %}" class="btn btn-primary">+ New task</a>{% endblock %}
+{% block content %}
+<div class="mb-4 flex flex-wrap items-center gap-3">
+  <div class="inline-flex rounded-lg bg-white p-1 text-sm ring-1 ring-slate-200">
+    <a href="?assignee={{ assignee }}" class="rounded-md px-3 py-1.5 {% if not show_done %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Open</a>
+    <a href="?assignee={{ assignee }}&show=done" class="rounded-md px-3 py-1.5 {% if show_done %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Completed</a>
+  </div>
+  <form method="get" class="form-stack">
+    {% if show_done %}<input type="hidden" name="show" value="done">{% endif %}
+    <select name="assignee" class="!mt-0 !w-auto" onchange="this.form.submit()" aria-label="Assignee">
+      <option value="me" {% if assignee == "me" %}selected{% endif %}>My tasks</option>
+      <option value="all" {% if assignee == "all" %}selected{% endif %}>Everyone</option>
+      <option value="none" {% if assignee == "none" %}selected{% endif %}>Unassigned</option>
+      {% for u in users %}{% if u != request.user %}<option value="{{ u.pk }}" {% if assignee == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.display_name }}</option>{% endif %}{% endfor %}
+    </select>
+  </form>
+</div>
+
+{% if not show_done %}
+<div class="card mb-6">{% include "tasks/partials/quick_add.html" with target="" next=request.get_full_path %}</div>
+<div class="space-y-6">
+  {% for label, key, tasks in groups %}
+  {% if tasks or key == "today" %}
+  <section class="card">
+    <h2 class="font-semibold {% if key == 'overdue' %}text-red-600{% endif %}">{{ label }} <span class="text-sm font-normal text-slate-400">{{ tasks|length }}</span></h2>
+    <ul class="mt-2 divide-y divide-slate-100">
+      {% for task in tasks %}{% include "tasks/partials/task_row.html" with next=request.get_full_path show_related=True %}
+      {% empty %}<li class="py-2 text-sm text-slate-500">Nothing due today. 🎉</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  {% endfor %}
+</div>
+{% else %}
+<section class="card">
+  <ul class="divide-y divide-slate-100">
+    {% for task in done %}{% include "tasks/partials/task_row.html" with next=request.get_full_path show_related=True %}
+    {% empty %}<li class="py-2 text-sm text-slate-500">No completed tasks yet.</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

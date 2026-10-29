@@ -2,16 +2,16 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count
-from django.http import StreamingHttpResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views import View
-from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, UpdateView
+from django.views.generic import CreateView, DeleteView, DetailView, FormView, ListView, TemplateView, UpdateView
 
 from apps.activities.forms import AttachmentForm, NoteForm
 from apps.activities.models import ActivityKind
-from apps.activities.services import record, record_changes, snapshot
+from apps.activities.services import record, record_changes, snapshot, timeline_for
 from apps.orgs.mixins import (
     AdminRequiredMixin,
     ManagerRequiredMixin,
@@ -50,29 +50,13 @@ CONTACT_TRACKED = ["first_name", "last_name", "email", "phone", "job_title", "co
 COMPANY_TRACKED = ["name", "domain", "industry", "phone", "website", "address", "city", "country", "owner"]
 
 
-class HtmxListMixin:
-    """Renders only the results partial for HTMX requests (live search / filter changes)."""
-
-    partial_template_name = None
-
-    def get_template_names(self):
-        if self.request.headers.get("HX-Request") and not self.request.headers.get("HX-Boosted"):
-            return [self.partial_template_name]
-        return super().get_template_names()
-
-
 # --- Contacts -------------------------------------------------------------------------------------------------------
 
 
-class ContactListView(OrgMemberRequiredMixin, HtmxListMixin, ListView):
-    template_name = "contacts/contact_list.html"
-    partial_template_name = "contacts/partials/contact_results.html"
-    paginate_by = 25
-    context_object_name = "contacts"
+class ContactListView(OrgMemberRequiredMixin, TemplateView):
+    """Filter bar + DataTable; rows come from ContactTableView."""
 
-    def get_queryset(self):
-        queryset = Contact.objects.for_org(self.request.org).select_related("company", "owner").prefetch_related("tags")
-        return filter_contacts(queryset, self.request.GET)
+    template_name = "contacts/contact_list.html"
 
     def get_context_data(self, **kwargs):
         org = self.request.org
@@ -136,7 +120,9 @@ class ContactDetailView(OrgMemberRequiredMixin, OrgScopedQuerysetMixin, DetailVi
         defs = custom_fields.definitions_for(self.request.org, Entity.CONTACT)
         return super().get_context_data(
             custom_values=custom_fields.display(defs, contact.custom_fields),
-            activities=contact.activities.select_related("actor", "note__author", "attachment")[:100],
+            activities=timeline_for(contact)[:100],
+            deals=contact.deals.select_related("stage", "pipeline").order_by("status", "-created_at"),
+            tasks=contact.tasks.open().select_related("assignee"),
             attachments=contact.attachments.select_related("uploaded_by"),
             note_form=NoteForm(),
             attachment_form=AttachmentForm(),
@@ -199,6 +185,24 @@ class ContactExportView(ManagerRequiredMixin, View):
         return response
 
 
+class ContactLookupView(OrgMemberRequiredMixin, View):
+    """Select2 AJAX source for LookupWidget pickers."""
+
+    def get(self, request):
+        q = request.GET.get("q", "")
+        contacts = filter_contacts(Contact.objects.for_org(request.org).select_related("company"), {"q": q, "sort": "name"})[:10]
+        return JsonResponse({"results": [
+            {"id": c.pk, "text": c.display_name, "hint": " · ".join(filter(None, [c.email, c.company.name if c.company else ""]))}
+            for c in contacts
+        ]})
+
+
+class CompanyLookupView(OrgMemberRequiredMixin, View):
+    def get(self, request):
+        companies = filter_companies(Company.objects.for_org(request.org), {"q": request.GET.get("q", "")})[:10]
+        return JsonResponse({"results": [{"id": c.pk, "text": c.name, "hint": c.domain or c.city} for c in companies]})
+
+
 def contact_url(contact):
     return reverse("contacts:contact_detail", args=[contact.pk])
 
@@ -206,15 +210,8 @@ def contact_url(contact):
 # --- Companies ------------------------------------------------------------------------------------------------------
 
 
-class CompanyListView(OrgMemberRequiredMixin, HtmxListMixin, ListView):
+class CompanyListView(OrgMemberRequiredMixin, TemplateView):
     template_name = "contacts/company_list.html"
-    partial_template_name = "contacts/partials/company_results.html"
-    paginate_by = 25
-    context_object_name = "companies"
-
-    def get_queryset(self):
-        queryset = Company.objects.for_org(self.request.org).select_related("owner").prefetch_related("tags")
-        return filter_companies(queryset, self.request.GET)
 
     def get_context_data(self, **kwargs):
         org = self.request.org
@@ -265,7 +262,9 @@ class CompanyDetailView(OrgMemberRequiredMixin, OrgScopedQuerysetMixin, DetailVi
         return super().get_context_data(
             custom_values=custom_fields.display(defs, company.custom_fields),
             people=company.contacts.select_related("owner").order_by("first_name"),
-            activities=company.activities.select_related("actor", "note__author", "attachment")[:100],
+            activities=timeline_for(company)[:100],
+            deals=company.deals.select_related("stage", "pipeline").order_by("status", "-created_at"),
+            tasks=company.tasks.open().select_related("assignee"),
             attachments=company.attachments.select_related("uploaded_by"),
             note_form=NoteForm(),
             attachment_form=AttachmentForm(),
@@ -377,7 +376,6 @@ class CustomFieldDeleteView(AdminRequiredMixin, OrgScopedQuerysetMixin, DeleteVi
 class ImportListView(ManagerRequiredMixin, ListView):
     template_name = "contacts/import_list.html"
     context_object_name = "jobs"
-    paginate_by = 20
 
     def get_queryset(self):
         return ImportJob.objects.for_org(self.request.org).select_related("created_by")

@@ -4,15 +4,12 @@
 {% block page_actions %}
 {% if current_membership.is_manager %}
   <a href="{% url 'contacts:import_upload' %}" class="btn btn-secondary">Import CSV</a>
-  <a href="{% url 'contacts:contact_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Export</a>
+  <a href="{% url 'contacts:contact_export' %}" data-export-base="{% url 'contacts:contact_export' %}" class="btn btn-secondary">Export</a>
 {% endif %}
 <a href="{% url 'contacts:contact_create' %}" class="btn btn-primary">+ New contact</a>
 {% endblock %}
 {% block content %}
-<form id="filters" class="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6 form-stack"
-      hx-get="{% url 'contacts:contact_list' %}" hx-target="#results" hx-push-url="true"
-      hx-trigger="input changed delay:300ms, change" hx-sync="this:replace">
-  <input type="search" name="q" value="{{ filters.q }}" placeholder="Search name, email, phone, company…" class="lg:col-span-2" aria-label="Search">
+<form id="filters" class="card filter-bar form-stack mb-4 grid gap-3 p-4 sm:grid-cols-3">
   <select name="stage" aria-label="Lifecycle stage">
     <option value="">All stages</option>
     {% for value, label in stages %}<option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
@@ -26,41 +23,44 @@
     <option value="none" {% if filters.owner == "none" %}selected{% endif %}>Unassigned</option>
     {% for u in owners %}<option value="{{ u.pk }}" {% if filters.owner == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
   </select>
-  <select name="sort" aria-label="Sort">
-    <option value="-created" {% if filters.sort == "-created" or not filters.sort %}selected{% endif %}>Newest first</option>
-    <option value="created" {% if filters.sort == "created" %}selected{% endif %}>Oldest first</option>
-    <option value="name" {% if filters.sort == "name" %}selected{% endif %}>Name A–Z</option>
-    <option value="company" {% if filters.sort == "company" %}selected{% endif %}>Company</option>
-    <option value="-activity" {% if filters.sort == "-activity" %}selected{% endif %}>Recent activity</option>
-  </select>
 </form>
 
 <form id="bulk-form" method="post" action="{% url 'contacts:contact_bulk' %}" class="mb-4 hidden flex-wrap items-center gap-2 rounded-xl bg-violet-50 p-3 text-sm ring-1 ring-violet-200 form-stack">
   {% csrf_token %}
   <input type="hidden" name="next" value="{{ request.get_full_path }}">
   <span class="font-medium text-violet-800"><span id="bulk-count">0</span> selected</span>
-  <select name="action" id="bulk-action" class="!mt-0 !w-auto">
+  <select name="action" id="bulk-action" class="!mt-0 !w-auto" data-no-select2>
     <option value="add_tag">Add tag</option>
     <option value="remove_tag">Remove tag</option>
     <option value="assign_owner">Assign owner</option>
     <option value="set_stage">Set lifecycle stage</option>
     {% if current_membership.is_manager %}<option value="delete">Delete</option>{% endif %}
   </select>
-  <select name="tag" data-for="add_tag remove_tag" class="!mt-0 !w-auto">{% for tag in tags %}<option value="{{ tag.pk }}">{{ tag.name }}</option>{% empty %}<option value="">No tags yet</option>{% endfor %}</select>
-  <select name="owner" data-for="assign_owner" class="!mt-0 !w-auto">{% for u in owners %}<option value="{{ u.pk }}">{{ u.display_name }}</option>{% endfor %}</select>
-  <select name="stage" data-for="set_stage" class="!mt-0 !w-auto">{% for value, label in stages %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+  <select name="tag" data-for="add_tag remove_tag" class="!mt-0 !w-auto" data-no-select2>{% for tag in tags %}<option value="{{ tag.pk }}">{{ tag.name }}</option>{% empty %}<option value="">No tags yet</option>{% endfor %}</select>
+  <select name="owner" data-for="assign_owner" class="!mt-0 !w-auto" data-no-select2>{% for u in owners %}<option value="{{ u.pk }}">{{ u.display_name }}</option>{% endfor %}</select>
+  <select name="stage" data-for="set_stage" class="!mt-0 !w-auto" data-no-select2>{% for value, label in stages %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
   <button class="btn btn-primary py-1.5" onclick="return document.getElementById('bulk-action').value !== 'delete' || confirm('Delete the selected contacts? This cannot be undone.')">Apply</button>
 </form>
 
-<div id="results">{% include "contacts/partials/contact_results.html" %}</div>
+<div id="results" class="card overflow-hidden p-0">
+  <table class="w-full" data-dt-source="{% url 'contacts:contact_table' %}" data-dt-filters="#filters"
+         data-order='[[7, "desc"]]' data-initial-search="{{ filters.q }}" data-search-placeholder="Search name, email, phone, company…"
+         data-empty="No contacts yet. Add one or import a CSV.">
+    <thead><tr>
+      <th data-orderable="false" class="w-8"><input type="checkbox" id="select-all" aria-label="Select all on this page" class="h-4 w-4"></th>
+      <th>Name</th><th>Company</th><th>Email / phone</th><th>Stage</th><th data-orderable="false">Tags</th><th>Owner</th><th>Created</th>
+    </tr></thead>
+  </table>
+</div>
 
 <script>
-  // Bulk bar: show when rows are ticked, and only the input the chosen action needs.
+  // Bulk bar: shown when rows are ticked, showing only the input the chosen action needs.
   (function () {
     const bar = document.getElementById("bulk-form");
     const action = document.getElementById("bulk-action");
+    const boxes = () => document.querySelectorAll("input[name=ids][form=bulk-form]");
     function sync() {
-      const ticked = document.querySelectorAll("input[name=ids][form=bulk-form]:checked").length;
+      const ticked = [...boxes()].filter(cb => cb.checked).length;
       document.getElementById("bulk-count").textContent = ticked;
       bar.classList.toggle("hidden", ticked === 0);
       bar.classList.toggle("flex", ticked > 0);
@@ -70,12 +70,10 @@
       });
     }
     document.addEventListener("change", e => {
-      if (e.target.id === "select-all") {
-        document.querySelectorAll("input[name=ids][form=bulk-form]").forEach(cb => cb.checked = e.target.checked);
-      }
+      if (e.target.id === "select-all") boxes().forEach(cb => cb.checked = e.target.checked);
       if (e.target.closest("#results") || e.target === action) sync();
     });
-    document.body.addEventListener("htmx:afterSwap", sync);
+    document.addEventListener("crm:table-drawn", () => { document.getElementById("select-all").checked = false; sync(); });
     sync();
   })();
 </script>

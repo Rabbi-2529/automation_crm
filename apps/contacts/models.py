@@ -38,6 +38,7 @@ class Tag(OrgScopedModel):
 class Entity(models.TextChoices):
     CONTACT = "contact", "Contact"
     COMPANY = "company", "Company"
+    DEAL = "deal", "Deal"
 
 
 class FieldType(models.TextChoices):

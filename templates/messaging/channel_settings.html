@@ -1,0 +1,81 @@
+{% extends "layouts/app.html" %}
+{% block title %}Email &amp; SMS{% endblock %}
+{% block page_title %}Email &amp; SMS{% endblock %}
+{% block content %}
+<nav class="mb-6 inline-flex rounded-lg bg-white p-1 text-sm ring-1 ring-slate-200">
+  <a href="?tab=email" class="rounded-md px-4 py-1.5 {% if tab == 'email' %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Outgoing email</a>
+  <a href="?tab=imap" class="rounded-md px-4 py-1.5 {% if tab == 'imap' %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Incoming email</a>
+  <a href="?tab=sms" class="rounded-md px-4 py-1.5 {% if tab == 'sms' %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">SMS</a>
+</nav>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="lg:col-span-2">
+    {% if tab == "email" %}
+    <form method="post" class="card space-y-6">{% csrf_token %}<input type="hidden" name="section" value="email">
+      {% include "partials/form.html" with form=email_form %}
+      <div class="flex justify-end"><button class="btn btn-primary">Save</button></div>
+    </form>
+    {% elif tab == "imap" %}
+    <form method="post" class="card space-y-6">{% csrf_token %}<input type="hidden" name="section" value="imap">
+      {% include "partials/form.html" with form=imap_form %}
+      <div class="flex justify-end"><button class="btn btn-primary">Save</button></div>
+    </form>
+    {% else %}
+    <form method="post" class="card space-y-6" id="sms-form">{% csrf_token %}<input type="hidden" name="section" value="sms">
+      {% include "partials/form.html" with form=sms_form %}
+      <div class="flex justify-end"><button class="btn btn-primary">Save</button></div>
+    </form>
+    {% endif %}
+  </div>
+
+  <aside class="space-y-6 text-sm">
+    {% if tab == "email" %}
+    <div class="card">
+      <h2 class="font-semibold">Currently sending as</h2>
+      <p class="mt-2">{{ sender.0 }} &lt;{{ sender.1 }}&gt;</p>
+      <p class="mt-1 text-slate-500">{% if channel_settings.uses_custom_smtp %}Through {{ channel_settings.smtp_host }}{% else %}Through ThingBD CRM's mail server{% endif %}</p>
+      <form method="post" action="{% url 'messaging:channel_test' %}" class="mt-4">{% csrf_token %}
+        <input type="hidden" name="action" value="email"><button class="btn btn-secondary">Send me a test email</button>
+      </form>
+    </div>
+    <div class="card text-slate-600">
+      <h2 class="font-semibold text-slate-900">Tips</h2>
+      <ul class="mt-2 list-disc space-y-1 pl-5">
+        <li>Gmail / Google Workspace: <code>smtp.gmail.com</code>, port 587, STARTTLS, and an <em>app password</em>.</li>
+        <li>Set <em>Reply-to</em> to the mailbox you connect under <em>Incoming email</em> so replies land in the Inbox.</li>
+      </ul>
+    </div>
+    {% elif tab == "imap" %}
+    <div class="card">
+      <h2 class="font-semibold">Mailbox status</h2>
+      <p class="mt-2 text-slate-600">{% if channel_settings.imap_last_checked_at %}Last checked {{ channel_settings.imap_last_checked_at|timesince }} ago{% else %}Never checked{% endif %}</p>
+      {% if channel_settings.imap_last_error %}<p class="mt-2 rounded-lg bg-red-50 p-2 text-red-700 ring-1 ring-red-200">{{ channel_settings.imap_last_error }}</p>{% endif %}
+      <form method="post" action="{% url 'messaging:channel_test' %}" class="mt-4">{% csrf_token %}
+        <input type="hidden" name="action" value="imap"><button class="btn btn-secondary">Check mailbox now</button>
+      </form>
+      <p class="mt-3 text-xs text-slate-500">The first check only remembers where the mailbox is up to; mail from then on is imported. Replies are matched to the email they answer, and new senders show up as "New sender".</p>
+    </div>
+    {% else %}
+    <div class="card">
+      <h2 class="font-semibold">Send a test SMS</h2>
+      <form method="post" action="{% url 'messaging:channel_test' %}" class="mt-3 space-y-3 form-stack">{% csrf_token %}
+        <input type="hidden" name="action" value="sms">
+        <input type="tel" name="to" value="{{ request.user.phone }}" placeholder="01XXXXXXXXX" required aria-label="Phone number">
+        <button class="btn btn-secondary">Send test</button>
+      </form>
+    </div>
+    {% if channel_settings.sms_provider == "twilio" %}
+    <div class="card">
+      <h2 class="font-semibold">Receiving SMS (Twilio)</h2>
+      <p class="mt-2 text-slate-600">On your Twilio number, set "A message comes in" to <strong>HTTP POST</strong>:</p>
+      <code class="mt-2 block break-all rounded bg-slate-100 p-2 text-xs">{{ twilio_webhook }}</code>
+    </div>
+    {% endif %}
+    <div class="card text-slate-600">
+      <h2 class="font-semibold text-slate-900">Bangladesh gateways</h2>
+      <p class="mt-2">Most local gateways (BulkSMSBD, SSL Wireless, Alpha SMS) work with <em>HTTP gateway</em>. Paste their send URL and replace the values with <code>{to}</code>, <code>{message}</code>, <code>{sender}</code> and <code>{api_key}</code>. Numbers are sent as 8801XXXXXXXXX.</p>
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

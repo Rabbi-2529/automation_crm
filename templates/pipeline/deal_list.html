@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+{% block title %}Deals{% endblock %}
+{% block page_title %}Deals <span class="ml-1 text-base font-normal text-slate-400">{{ current_org.currency }} <span id="filtered-value">…</span></span>{% endblock %}
+{% block page_actions %}
+<a href="{% url 'pipeline:deal_board' %}" class="btn btn-secondary">Board view</a>
+<a href="{% url 'pipeline:deal_create' %}" class="btn btn-primary">+ New deal</a>
+{% endblock %}
+{% block content %}
+<form id="filters" class="card filter-bar form-stack mb-4 grid gap-3 p-4 sm:grid-cols-3">
+  <select name="status" aria-label="Status">
+    <option value="all" {% if filters.status == "all" %}selected{% endif %}>Any status</option>
+    {% for value, label in statuses %}<option value="{{ value }}" {% if filters.status == value or not filters.status and value == "open" %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="pipeline" aria-label="Pipeline">
+    <option value="">All pipelines</option>
+    {% for p in pipelines %}<option value="{{ p.pk }}" {% if filters.pipeline == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+  </select>
+  <select name="owner" aria-label="Owner">
+    <option value="">Any owner</option>
+    <option value="me" {% if filters.owner == "me" %}selected{% endif %}>Me</option>
+    {% for u in owners %}<option value="{{ u.pk }}" {% if filters.owner == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+  </select>
+</form>
+<div class="card overflow-hidden p-0">
+  <table id="deal-table" class="w-full" data-dt-source="{% url 'pipeline:deal_table' %}" data-dt-filters="#filters"
+         data-order='[[7, "desc"]]' data-initial-search="{{ filters.q }}" data-search-placeholder="Search title, contact, company…"
+         data-empty="No deals match.">
+    <thead><tr><th>Deal</th><th>Value</th><th>Stage</th><th>Status</th><th data-orderable="false">Contact / company</th><th>Expected close</th><th>Owner</th><th>Created</th></tr></thead>
+  </table>
+</div>
+<script>
+  document.addEventListener("crm:table-drawn", event => {
+    const json = event.target.crmTable && event.target.crmTable.ajax.json();
+    if (json) document.getElementById("filtered-value").textContent = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(json.filteredValue);
+  });
+</script>
+{% endblock %}

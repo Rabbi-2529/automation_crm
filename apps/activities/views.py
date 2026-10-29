@@ -4,9 +4,11 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.views import View
 
 from apps.contacts.models import Company, Contact
+from apps.pipeline.models import Deal
 from apps.orgs.mixins import OrgMemberRequiredMixin
 from apps.orgs.models import Role
 
@@ -14,23 +16,36 @@ from .forms import AttachmentForm, NoteForm
 from .models import ActivityKind, Attachment, Note
 from .services import record
 
-TARGETS = {"contact": Contact, "company": Company}
+# target slug -> (model, detail url name)
+TARGETS = {
+    "contact": (Contact, "contacts:contact_detail"),
+    "company": (Company, "contacts:company_detail"),
+    "deal": (Deal, "pipeline:deal_detail"),
+}
 
 
 class TargetMixin(OrgMemberRequiredMixin):
-    """Resolves /<target>/<pk>/ to an org-owned Contact or Company."""
+    """Resolves /<target>/<pk>/ to an org-owned Contact, Company or Deal."""
 
     def get_target(self):
-        model = TARGETS.get(self.kwargs["target"])
-        if model is None:
+        if self.kwargs["target"] not in TARGETS:
             raise Http404
+        model, _ = TARGETS[self.kwargs["target"]]
         return get_object_or_404(model.objects.for_org(self.request.org), pk=self.kwargs["pk"])
 
     def target_kw(self, target):
         return {self.kwargs["target"]: target}
 
     def back(self, target):
-        return redirect(f"contacts:{self.kwargs['target']}_detail", pk=target.pk)
+        return redirect(TARGETS[self.kwargs["target"]][1], pk=target.pk)
+
+
+def owner_url(item):
+    """Detail page of whichever record a note/attachment hangs off."""
+    for slug, (_, url_name) in TARGETS.items():
+        if pk := getattr(item, f"{slug}_id"):
+            return reverse(url_name, args=[pk])
+    return reverse("core:dashboard")
 
 
 class NoteCreateView(TargetMixin, View):
@@ -51,10 +66,10 @@ class NoteDeleteView(OrgMemberRequiredMixin, View):
         note = get_object_or_404(Note.objects.for_org(request.org), pk=pk)
         if note.author_id != request.user.pk and not request.membership.has_role(Role.MANAGER):
             raise PermissionDenied
-        target = ("contact", note.contact_id) if note.contact_id else ("company", note.company_id)
+        back = owner_url(note)
         note.delete()
         messages.success(request, "Note deleted.")
-        return redirect(f"contacts:{target[0]}_detail", pk=target[1])
+        return redirect(back)
 
 
 class AttachmentUploadView(TargetMixin, View):
@@ -89,8 +104,8 @@ class AttachmentDeleteView(OrgMemberRequiredMixin, View):
         attachment = get_object_or_404(Attachment.objects.for_org(request.org), pk=pk)
         if attachment.uploaded_by_id != request.user.pk and not request.membership.has_role(Role.MANAGER):
             raise PermissionDenied
-        target = ("contact", attachment.contact_id) if attachment.contact_id else ("company", attachment.company_id)
+        back = owner_url(attachment)
         attachment.file.delete(save=False)
         attachment.delete()
         messages.success(request, "File deleted.")
-        return redirect(f"contacts:{target[0]}_detail", pk=target[1])
+        return redirect(back)

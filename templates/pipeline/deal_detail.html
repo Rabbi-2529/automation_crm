@@ -1,0 +1,63 @@
+{% extends "layouts/app.html" %}
+{% load humanize %}
+{% block title %}{{ deal.title }}{% endblock %}
+{% block page_title %}
+<a href="{% url 'pipeline:deal_board' %}?pipeline={{ deal.pipeline_id }}" class="text-sm font-normal text-slate-400 hover:text-violet-600">{{ deal.pipeline.name }} /</a> {{ deal.title }}
+{% endblock %}
+{% block page_actions %}
+{% if deal.status == "open" %}
+  <form method="post" action="{% url 'pipeline:deal_won' deal.pk %}">{% csrf_token %}<button class="btn bg-emerald-600 text-white hover:bg-emerald-700">Won</button></form>
+  <a href="{% url 'pipeline:deal_lost' deal.pk %}" class="btn btn-danger">Lost</a>
+{% else %}
+  <form method="post" action="{% url 'pipeline:deal_reopen' deal.pk %}">{% csrf_token %}<button class="btn btn-secondary">Reopen</button></form>
+{% endif %}
+{% if deal.contact.email %}<a href="{% url 'messaging:compose' %}?channel=email&contact={{ deal.contact_id }}&deal={{ deal.pk }}" class="btn btn-secondary">Email</a>{% endif %}
+{% if deal.contact.phone %}<a href="{% url 'messaging:compose' %}?channel=sms&contact={{ deal.contact_id }}&deal={{ deal.pk }}" class="btn btn-secondary">SMS</a>{% endif %}
+{% if deal.contact %}<a href="{% url 'messaging:call_create' %}?contact={{ deal.contact_id }}&deal={{ deal.pk }}" class="btn btn-secondary">Log call</a>{% endif %}
+<a href="{% url 'pipeline:deal_edit' deal.pk %}" class="btn btn-secondary">Edit</a>
+{% if current_membership.is_manager %}<a href="{% url 'pipeline:deal_delete' deal.pk %}" class="btn btn-secondary text-red-600">Delete</a>{% endif %}
+{% endblock %}
+{% block content %}
+{% if deal.status != "open" %}
+<div class="mb-6 rounded-xl p-4 text-sm ring-1 {% if deal.status == 'won' %}bg-emerald-50 text-emerald-800 ring-emerald-200{% else %}bg-red-50 text-red-800 ring-red-200{% endif %}">
+  <strong>{{ deal.get_status_display }}</strong> on {{ deal.closed_at|date:"d M Y" }}{% if deal.lost_reason %} · {{ deal.lost_reason.name }}{% endif %}
+  {% if deal.lost_note %}<p class="mt-1">{{ deal.lost_note|linebreaksbr }}</p>{% endif %}
+</div>
+{% else %}
+<div class="mb-6 flex overflow-x-auto rounded-xl bg-white p-1 ring-1 ring-slate-200" role="list" aria-label="Stages">
+  {% for s in stages %}
+  <form method="post" action="{% url 'pipeline:deal_move' deal.pk %}" class="min-w-28 flex-1" role="listitem">{% csrf_token %}
+    <input type="hidden" name="stage" value="{{ s.pk }}">
+    <button class="w-full truncate rounded-lg px-3 py-2 text-sm {% if s.pk == deal.stage_id %}bg-violet-600 font-medium text-white{% elif s.position < deal.stage.position %}bg-violet-100 text-violet-700 hover:bg-violet-200{% else %}text-slate-500 hover:bg-slate-100{% endif %}" {% if s.pk == deal.stage_id %}aria-current="step"{% endif %}>{{ s.name }}</button>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6">
+    <div class="card">
+      <p class="text-3xl font-semibold">{{ deal.currency_code }} {{ deal.value|floatformat:0|intcomma }}</p>
+      <p class="text-sm text-slate-500">{% if deal.status == "open" %}Weighted {{ deal.currency_code }} {{ deal.weighted_value|floatformat:0|intcomma }} at {{ deal.stage.probability }}%{% else %}{% include "pipeline/partials/status_badge.html" %}{% endif %}</p>
+      <dl class="mt-5 space-y-2 text-sm">
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Stage</dt><dd>{{ deal.stage.name }}{% if deal.is_rotting %} <span class="badge bg-red-100 text-red-700">idle</span>{% endif %}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Contact</dt><dd>{% if deal.contact %}<a href="{% url 'contacts:contact_detail' deal.contact.pk %}" class="text-violet-600 hover:underline">{{ deal.contact.display_name }}</a>{% else %}—{% endif %}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Company</dt><dd>{% if deal.company %}<a href="{% url 'contacts:company_detail' deal.company.pk %}" class="text-violet-600 hover:underline">{{ deal.company.name }}</a>{% else %}—{% endif %}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Owner</dt><dd>{{ deal.owner.display_name|default:"Unassigned" }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Expected close</dt><dd class="{% if deal.is_overdue %}text-red-600{% endif %}">{{ deal.expected_close_date|date:"d M Y"|default:"—" }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">In stage since</dt><dd>{{ deal.stage_changed_at|timesince }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Created</dt><dd>{{ deal.created_at|date:"d M Y" }}{% if deal.created_by %} by {{ deal.created_by.display_name }}{% endif %}</dd></div>
+      </dl>
+      {% include "contacts/partials/custom_values.html" %}
+      <div class="mt-4 flex flex-wrap gap-1 border-t border-slate-100 pt-4">
+        {% for tag in deal.tags.all %}{% include "contacts/partials/tag_chip.html" %}{% empty %}<span class="text-sm text-slate-400">No tags</span>{% endfor %}
+      </div>
+    </div>
+    {% include "tasks/partials/task_panel.html" with target="deal" obj=deal %}
+    {% include "contacts/partials/attachments.html" with target="deal" obj=deal %}
+  </div>
+  <div class="lg:col-span-2">
+    {% include "contacts/partials/timeline.html" with target="deal" obj=deal %}
+  </div>
+</div>
+{% endblock %}

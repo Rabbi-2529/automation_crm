@@ -6,8 +6,8 @@
 {% endblock %}
 {% block content %}
 <div class="card overflow-x-auto p-0">
-  <table class="table">
-    <thead class="bg-slate-50"><tr><th>Name</th><th>Email</th><th>Role</th><th>Teams</th><th>Status</th><th></th></tr></thead>
+  <table class="table" data-datatable>
+    <thead class="bg-slate-50"><tr><th>Name</th><th>Email</th><th>Role</th><th>Teams</th><th>Status</th><th data-orderable="false"></th></tr></thead>
     <tbody class="divide-y divide-slate-100">
       {% for m in memberships %}
       <tr class="{% if not m.is_active %}opacity-50{% endif %}">

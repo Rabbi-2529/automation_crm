@@ -36,8 +36,7 @@ class OrgModelForm(forms.ModelForm):
             self.fields["owner"].label_from_instance = lambda u: u.display_name
         if "tags" in self.fields:
             self.fields["tags"].queryset = Tag.objects.for_org(org)
-            self.fields["tags"].widget = forms.CheckboxSelectMultiple()
-            self.fields["tags"].widget.choices = self.fields["tags"].choices
+            self.fields["tags"].widget.attrs["data-placeholder"] = "Add tags…"
         if "company" in self.fields:
             self.fields["company"].queryset = Company.objects.for_org(org)
 
@@ -216,7 +215,7 @@ class ImportMappingForm(forms.ModelForm):
         self.fields["default_owner"].label_from_instance = lambda u: u.display_name
         self.fields["default_owner"].help_text = "Used when the CSV has no owner column or the cell is empty."
         self.fields["add_tags"].queryset = Tag.objects.for_org(org)
-        self.fields["add_tags"].widget = forms.CheckboxSelectMultiple(choices=self.fields["add_tags"].choices)
+        self.fields["add_tags"].widget.attrs["data-placeholder"] = "No extra tags"
         self.fields["duplicate_strategy"].choices = DuplicateStrategy.choices
         self.column_names = []
         guesses = guess_mapping(self.instance.headers, targets)

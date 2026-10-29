@@ -8,9 +8,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-  {# CDN builds for now; Phase 8 replaces these with a compiled Tailwind file and vendored HTMX. #}
+  {# CDN builds for now; Phase 8 vendors these and compiles Tailwind. #}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
+  <link rel="stylesheet" href="{% static 'css/ui.css' %}">
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js" defer></script>
+  <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js" defer></script>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
+  <script src="{% static 'js/ui.js' %}" defer></script>
   <style type="text/tailwindcss">
     /* ThingBD brand (thingbd.com): violet #8B5CF6, near-black #050505 / #121118, Outfit. */
     @theme {

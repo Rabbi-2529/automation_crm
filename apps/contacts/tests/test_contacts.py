@@ -1,3 +1,5 @@
+import re
+
 from django.urls import reverse
 
 from apps.activities.models import ActivityKind
@@ -122,27 +124,50 @@ class ContactListTests(CrmTestCase):
         self.karim = self.contact(first_name="Karim", email="karim@other.com", lifecycle_stage="lead")
         self.login(self.agent)
 
-    def names(self, **params):
-        response = self.client.get(reverse("contacts:contact_list"), params)
-        return [c.first_name for c in response.context["contacts"]]
+    def table(self, search="", **params):
+        """Calls the DataTables endpoint the way the browser does; ordered by name (column 1) unless overridden."""
+        query = {"draw": 3, "start": 0, "length": 25, "search[value]": search, "order[0][column]": 1, "order[0][dir]": "asc",
+                 **params}
+        return self.client.get(reverse("contacts:contact_table"), query).json()
+
+    def names(self, search="", **params):
+        return [re.search(r"<span>([^<]+)<span", row[1]).group(1) for row in self.table(search, **params)["data"]]
 
     def test_search_by_name_email_company_and_phone_digits(self):
-        self.assertEqual(self.names(q="rahim"), ["Rahim"])
-        self.assertEqual(self.names(q="other.com"), ["Karim"])
-        self.assertEqual(self.names(q="acme"), ["Rahim"])
-        self.assertEqual(self.names(q="223344"), ["Rahim"])
+        self.assertEqual(self.names("rahim"), ["Rahim"])
+        self.assertEqual(self.names("other.com"), ["Karim"])
+        self.assertEqual(self.names("acme"), ["Rahim"])
+        self.assertEqual(self.names("223344"), ["Rahim"])
 
     def test_filters(self):
         self.assertEqual(self.names(stage="lead"), ["Karim"])
         self.assertEqual(self.names(tag=self.vip.pk), ["Rahim"])
         self.assertEqual(self.names(owner=self.agent.user.pk), ["Rahim"])
         self.assertEqual(self.names(owner="none"), ["Karim"])
-        self.assertEqual(self.names(sort="name"), ["Karim", "Rahim"])
 
-    def test_htmx_request_returns_results_partial_only(self):
-        response = self.client.get(reverse("contacts:contact_list"), {"q": "rahim"}, HTTP_HX_REQUEST="true")
-        self.assertTemplateUsed(response, "contacts/partials/contact_results.html")
-        self.assertTemplateNotUsed(response, "layouts/app.html")
+    def test_datatables_protocol(self):
+        payload = self.table(stage="lead")
+        self.assertEqual((payload["draw"], payload["recordsTotal"], payload["recordsFiltered"]), (3, 2, 1))
+        self.assertEqual(len(payload["data"][0]), 8)
+        self.assertIn('name="ids"', payload["data"][0][0])
+        # Ordering by column 1 desc, and paging.
+        self.assertEqual(self.names(**{"order[0][dir]": "desc"}), ["Rahim", "Karim"])
+        self.assertEqual(self.names(length=1, start=1), ["Rahim"])
+        # Non-sortable column (tags) or junk input falls back to default ordering instead of erroring.
+        self.assertEqual(len(self.table(**{"order[0][column]": 5})["data"]), 2)
+        self.assertEqual(self.client.get(reverse("contacts:contact_table"), {"start": "x", "length": "999"}).status_code, 200)
+
+    def test_cells_are_escaped(self):
+        self.contact(first_name="<script>alert(1)</script>")
+        row = next(r for r in self.table()["data"] if "script" in r[1])
+        self.assertIn("&lt;script&gt;", row[1])
+        self.assertNotIn("<script>", row[1])
+
+    def test_table_is_org_scoped(self):
+        self.contact(org=self.other_org, first_name="Secret")
+        payload = self.table()
+        self.assertEqual(payload["recordsTotal"], 2)
+        self.assertNotIn("Secret", str(payload["data"]))
 
     def test_bulk_assign_owner_and_stage(self):
         ids = [self.rahim.pk, self.karim.pk]
@@ -259,8 +284,10 @@ class CompanyTests(CrmTestCase):
         self.contact(first_name="B", company=acme)
         self.company("Hidden Co", org=self.other_org)
         self.login(self.agent)
-        response = self.client.get(reverse("contacts:company_list"))
-        self.assertEqual([(c.name, c.contact_count) for c in response.context["companies"]], [("Acme", 2)])
+        payload = self.client.get(reverse("contacts:company_table"), {"draw": 1, "order[0][column]": 3, "order[0][dir]": "desc"}).json()
+        self.assertEqual(payload["recordsTotal"], 1)
+        self.assertIn("Acme", payload["data"][0][0])
+        self.assertEqual(payload["data"][0][3], 2)
 
 
 class TagTests(CrmTestCase):

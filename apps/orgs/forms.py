@@ -55,7 +55,6 @@ class TeamForm(forms.ModelForm):
     class Meta:
         model = Team
         fields = ["name", "description", "lead", "members"]
-        widgets = {"members": forms.CheckboxSelectMultiple}
 
     def __init__(self, *args, org, **kwargs):
         self.org = org

@@ -1,0 +1,22 @@
+{# Click-to-insert variable list. Args: variables, target (textarea id) #}
+<div class="card text-sm">
+  <h2 class="font-semibold">Variables</h2>
+  <p class="mt-1 text-xs text-slate-500">Click to insert. Add a fallback with <code>|default:"there"</code>.</p>
+  <ul class="mt-3 space-y-1">
+    {% for key, label in variables %}
+    <li><button type="button" class="w-full rounded px-2 py-1 text-left hover:bg-violet-50" data-insert="{% templatetag openvariable %} {{ key }} {% templatetag closevariable %}" data-target="{{ target }}">
+      <code class="text-xs text-violet-700">{{ key }}</code><span class="block text-xs text-slate-500">{{ label }}</span></button></li>
+    {% endfor %}
+  </ul>
+</div>
+<script>
+  document.addEventListener("click", event => {
+    const button = event.target.closest("[data-insert]");
+    if (!button) return;
+    const field = document.getElementById(button.dataset.target);
+    const [start, end] = [field.selectionStart ?? field.value.length, field.selectionEnd ?? field.value.length];
+    field.value = field.value.slice(0, start) + button.dataset.insert + field.value.slice(end);
+    field.focus();
+    field.selectionStart = field.selectionEnd = start + button.dataset.insert.length;
+  });
+</script>

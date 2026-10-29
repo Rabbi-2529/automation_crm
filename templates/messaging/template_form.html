@@ -1,0 +1,15 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if object %}Edit template{% else %}New template{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit {{ object.name }}{% else %}New template{% endif %}{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <form method="post" class="card space-y-6 lg:col-span-2">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="flex justify-between">
+      <a href="{% url 'messaging:template_list' %}" class="btn btn-secondary">Cancel</a>
+      <button class="btn btn-primary">Save template</button>
+    </div>
+  </form>
+  {% include "messaging/partials/variables.html" with target="id_body" %}
+</div>
+{% endblock %}

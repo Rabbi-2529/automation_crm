@@ -1,0 +1,14 @@
+{% load humanize %}
+<a href="{% url 'pipeline:deal_detail' deal.pk %}" data-deal="{{ deal.pk }}" data-value="{{ deal.value }}"
+   class="deal-card block cursor-grab rounded-lg bg-white p-3 text-sm shadow-sm ring-1 active:cursor-grabbing {% if deal.is_rotting %}ring-red-300{% else %}ring-slate-200 hover:ring-violet-300{% endif %}">
+  <p class="font-medium text-slate-900">{{ deal.title }}</p>
+  <p class="mt-0.5 text-xs text-slate-500">{% if deal.contact %}{{ deal.contact.display_name }}{% endif %}{% if deal.contact and deal.company %} · {% endif %}{% if deal.company %}{{ deal.company.name }}{% endif %}</p>
+  <div class="mt-2 flex items-center justify-between">
+    <span class="font-semibold text-slate-800">{{ deal.currency_code }} {{ deal.value|floatformat:0|intcomma }}</span>
+    <span class="flex items-center gap-1">
+      {% if deal.is_rotting %}<span class="badge bg-red-100 text-red-700" title="No activity for {{ deal.stage.rot_days }}+ days">idle</span>{% endif %}
+      {% if deal.expected_close_date %}<span class="text-xs {% if deal.is_overdue %}text-red-600{% else %}text-slate-400{% endif %}" title="Expected close">{{ deal.expected_close_date|date:"d M" }}</span>{% endif %}
+      {% if deal.owner %}<span class="grid h-6 w-6 place-items-center rounded-full bg-violet-100 text-[10px] font-semibold text-violet-700" title="{{ deal.owner.display_name }}">{{ deal.owner.initials }}</span>{% endif %}
+    </span>
+  </div>
+</a>

@@ -1,0 +1,11 @@
+{# Args: target ("contact"/"company"/"deal" or empty), obj, next #}
+<form method="post" action="{% url 'tasks:task_create' %}" class="flex flex-wrap gap-2 form-stack">{% csrf_token %}
+  <input type="hidden" name="quick" value="1">
+  <input type="hidden" name="next" value="{{ next }}">
+  <input type="hidden" name="assignee" value="{{ request.user.pk }}">
+  <input type="hidden" name="kind" value="todo">
+  {% if target %}<input type="hidden" name="{{ target }}" value="{{ obj.pk }}">{% endif %}
+  <input type="text" name="title" required maxlength="200" placeholder="Add a task… e.g. Call back about the quote" class="!mt-0 min-w-0 flex-1 basis-56" aria-label="Task title">
+  <input type="date" name="due_date" class="!mt-0 !w-auto" aria-label="Due date">
+  <button class="btn btn-secondary py-1.5">Add</button>
+</form>

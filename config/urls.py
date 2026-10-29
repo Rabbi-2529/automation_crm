@@ -6,6 +6,9 @@ urlpatterns = [
     path("accounts/", include("apps.accounts.urls")),
     path("org/", include("apps.orgs.urls")),
     path("activity/", include("apps.activities.urls")),
+    path("tasks/", include("apps.tasks.urls")),
+    path("", include("apps.messaging.urls")),
+    path("", include("apps.pipeline.urls")),
     path("", include("apps.contacts.urls")),
     path("", include("apps.core.urls")),
 ]

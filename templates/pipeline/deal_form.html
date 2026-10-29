@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if object %}Edit deal{% else %}New deal{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit {{ object.title }}{% else %}New deal{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-3xl space-y-6">{% csrf_token %}
+  {% include "partials/form.html" %}
+  <div class="flex items-center justify-between">
+    <a href="{% if object %}{% url 'pipeline:deal_detail' object.pk %}{% else %}{% url 'pipeline:deal_board' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary">Save deal</button>
+  </div>
+</form>
+{% endblock %}

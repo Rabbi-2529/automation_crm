@@ -1,0 +1,14 @@
+{% autoescape off %}Hi {{ task.assignee.display_name }},
+
+Reminder: {{ task.title }}
+{% if task.due_at %}Due: {{ task.due_at|date:"l d M Y, H:i" }}{% endif %}
+{% if task.deal %}Deal: {{ task.deal.title }}
+{% elif task.contact %}Contact: {{ task.contact.display_name }}
+{% elif task.company %}Company: {{ task.company.name }}
+{% endif %}{% if task.description %}
+{{ task.description }}
+{% endif %}
+Your tasks: {{ link }}
+
+— ThingBD CRM ({{ task.org.name }})
+{% endautoescape %}

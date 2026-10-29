@@ -2,14 +2,11 @@
 {% block title %}Companies{% endblock %}
 {% block page_title %}Companies <span class="ml-1 text-base font-normal text-slate-400">{{ total_count }}</span>{% endblock %}
 {% block page_actions %}
-{% if current_membership.is_manager %}<a href="{% url 'contacts:company_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Export</a>{% endif %}
+{% if current_membership.is_manager %}<a href="{% url 'contacts:company_export' %}" data-export-base="{% url 'contacts:company_export' %}" class="btn btn-secondary">Export</a>{% endif %}
 <a href="{% url 'contacts:company_create' %}" class="btn btn-primary">+ New company</a>
 {% endblock %}
 {% block content %}
-<form id="filters" class="card mb-4 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5 form-stack"
-      hx-get="{% url 'contacts:company_list' %}" hx-target="#results" hx-push-url="true"
-      hx-trigger="input changed delay:300ms, change" hx-sync="this:replace">
-  <input type="search" name="q" value="{{ filters.q }}" placeholder="Search name, domain, industry, city…" class="lg:col-span-2" aria-label="Search">
+<form id="filters" class="card filter-bar form-stack mb-4 grid gap-3 p-4 sm:grid-cols-2">
   <select name="tag" aria-label="Tag">
     <option value="">All tags</option>
     {% for tag in tags %}<option value="{{ tag.pk }}" {% if filters.tag == tag.pk|stringformat:"s" %}selected{% endif %}>{{ tag.name }}</option>{% endfor %}
@@ -19,11 +16,12 @@
     <option value="none" {% if filters.owner == "none" %}selected{% endif %}>Unassigned</option>
     {% for u in owners %}<option value="{{ u.pk }}" {% if filters.owner == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
   </select>
-  <select name="sort" aria-label="Sort">
-    <option value="name">Name A–Z</option>
-    <option value="-created" {% if filters.sort == "-created" %}selected{% endif %}>Newest first</option>
-    <option value="-contacts" {% if filters.sort == "-contacts" %}selected{% endif %}>Most contacts</option>
-  </select>
 </form>
-<div id="results">{% include "contacts/partials/company_results.html" %}</div>
+<div class="card overflow-hidden p-0">
+  <table class="w-full" data-dt-source="{% url 'contacts:company_table' %}" data-dt-filters="#filters"
+         data-order='[[0, "asc"]]' data-initial-search="{{ filters.q }}" data-search-placeholder="Search name, domain, industry, city…"
+         data-empty="No companies yet.">
+    <thead><tr><th>Company</th><th>Industry</th><th>Location</th><th>Contacts</th><th data-orderable="false">Tags</th><th>Owner</th><th>Created</th></tr></thead>
+  </table>
+</div>
 {% endblock %}

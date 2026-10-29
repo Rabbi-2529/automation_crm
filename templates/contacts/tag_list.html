@@ -4,8 +4,8 @@
 {% block page_actions %}<a href="{% url 'contacts:tag_create' %}" class="btn btn-primary">+ New tag</a>{% endblock %}
 {% block content %}
 <div class="card overflow-x-auto p-0">
-  <table class="table">
-    <thead class="bg-slate-50"><tr><th>Tag</th><th>Contacts</th><th>Companies</th><th></th></tr></thead>
+  <table class="table" data-datatable data-empty="No tags yet. Tags also get created automatically by CSV imports.">
+    <thead class="bg-slate-50"><tr><th>Tag</th><th>Contacts</th><th>Companies</th><th data-orderable="false"></th></tr></thead>
     <tbody class="divide-y divide-slate-100">
       {% for tag in tags %}
       <tr>
@@ -14,7 +14,7 @@
         <td><a href="{% url 'contacts:company_list' %}?tag={{ tag.pk }}" class="hover:text-violet-700">{{ tag.company_count }}</a></td>
         <td class="text-right"><a href="{% url 'contacts:tag_edit' tag.pk %}" class="text-violet-600 hover:underline">Edit</a> · <a href="{% url 'contacts:tag_delete' tag.pk %}" class="text-red-600 hover:underline">Delete</a></td>
       </tr>
-      {% empty %}<tr><td colspan="4" class="py-10 text-center text-slate-500">No tags yet. Tags also get created automatically by CSV imports.</td></tr>{% endfor %}
+      {% endfor %}
     </tbody>
   </table>
 </div>

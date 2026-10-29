@@ -4,7 +4,7 @@
 {% block page_actions %}<a href="{% url 'contacts:import_upload' %}" class="btn btn-primary">+ New import</a>{% endblock %}
 {% block content %}
 <div class="card overflow-x-auto p-0">
-  <table class="table">
+  <table class="table" data-datatable data-empty="No imports yet.">
     <thead class="bg-slate-50"><tr><th>File</th><th>Status</th><th>Created</th><th>Updated</th><th>Skipped</th><th>Errors</th><th>By</th><th>When</th></tr></thead>
     <tbody class="divide-y divide-slate-100">
       {% for job in jobs %}
@@ -14,11 +14,10 @@
         <td>{{ job.created_count }}</td><td>{{ job.updated_count }}</td><td>{{ job.skipped_count }}</td>
         <td class="{% if job.error_count %}text-red-600{% endif %}">{{ job.error_count }}</td>
         <td>{{ job.created_by.display_name|default:"—" }}</td>
-        <td class="text-slate-500">{{ job.created_at|date:"d M Y H:i" }}</td>
+        <td class="text-slate-500" data-order="{{ job.created_at|date:'U' }}">{{ job.created_at|date:"d M Y H:i" }}</td>
       </tr>
-      {% empty %}<tr><td colspan="8" class="py-10 text-center text-slate-500">No imports yet.</td></tr>{% endfor %}
+      {% endfor %}
     </tbody>
   </table>
-  {% include "contacts/partials/pagination.html" %}
 </div>
 {% endblock %}

@@ -1,0 +1,37 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if object %}Edit pipeline{% else %}New pipeline{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit {{ object.name }}{% else %}New pipeline{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="max-w-4xl space-y-6">{% csrf_token %}
+  <div class="card">{% include "partials/form.html" %}</div>
+
+  <div class="card overflow-x-auto p-0">
+    <h2 class="px-4 pt-4 font-semibold">Stages</h2>
+    <p class="px-4 text-sm text-slate-500">Ordered by position. Won and lost aren't stages: every pipeline has them.</p>
+    {{ stage_formset.management_form }}
+    {% if stage_formset.non_form_errors %}
+    <div class="mx-4 mt-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{% for e in stage_formset.non_form_errors %}<p>{{ e }}</p>{% endfor %}</div>
+    {% endif %}
+    <table class="table form-stack mt-2">
+      <thead class="bg-slate-50"><tr><th>Name</th><th class="w-28">Win chance %</th><th class="w-32">Idle after (days)</th><th class="w-24">Position</th><th class="w-20">Remove</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for f in stage_formset %}
+        <tr>
+          <td>{{ f.id }}{{ f.name }}{% for e in f.name.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}</td>
+          <td>{{ f.probability }}{% for e in f.probability.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}</td>
+          <td>{{ f.rot_days }}</td>
+          <td>{{ f.position }}</td>
+          <td class="text-center">{% if f.instance.pk %}{{ f.DELETE }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="px-4 pb-4 text-xs text-slate-500">Save to get more empty rows for extra stages.</p>
+  </div>
+
+  <div class="flex justify-between">
+    <a href="{% url 'pipeline:pipeline_list' %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary">Save pipeline</button>
+  </div>
+</form>
+{% endblock %}

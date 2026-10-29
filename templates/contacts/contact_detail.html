@@ -4,6 +4,10 @@
 <a href="{% url 'contacts:contact_list' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Contacts /</a> {{ contact.display_name }}
 {% endblock %}
 {% block page_actions %}
+{% if contact.email %}<a href="{% url 'messaging:compose' %}?channel=email&contact={{ contact.pk }}" class="btn btn-secondary">Email</a>{% endif %}
+{% if contact.phone %}<a href="{% url 'messaging:compose' %}?channel=sms&contact={{ contact.pk }}" class="btn btn-secondary">SMS</a>{% endif %}
+<a href="{% url 'messaging:call_create' %}?contact={{ contact.pk }}" class="btn btn-secondary">Log call</a>
+<a href="{% url 'pipeline:deal_create' %}?contact={{ contact.pk }}" class="btn btn-primary">+ Deal</a>
 <a href="{% url 'contacts:contact_edit' contact.pk %}" class="btn btn-secondary">Edit</a>
 {% if current_membership.is_manager %}<a href="{% url 'contacts:contact_delete' contact.pk %}" class="btn btn-secondary text-red-600">Delete</a>{% endif %}
 {% endblock %}
@@ -42,6 +46,8 @@
     </div>
     {% endif %}
 
+    {% include "pipeline/partials/deals_card.html" with target="contact" obj=contact %}
+    {% include "tasks/partials/task_panel.html" with target="contact" obj=contact %}
     {% include "contacts/partials/attachments.html" with target="contact" obj=contact %}
   </div>
 

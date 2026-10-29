@@ -40,6 +40,8 @@
       </ul>
     </div>
 
+    {% include "pipeline/partials/deals_card.html" with target="company" obj=company %}
+    {% include "tasks/partials/task_panel.html" with target="company" obj=company %}
     {% include "contacts/partials/attachments.html" with target="company" obj=company %}
   </div>
   <div class="lg:col-span-2">

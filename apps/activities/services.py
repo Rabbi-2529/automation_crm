@@ -8,7 +8,8 @@ from django.db.models import Model
 from .models import Activity, ActivityKind
 
 
-def record(*, org, kind, summary, actor=None, contact=None, company=None, data=None, note=None, attachment=None):
+def record(*, org, kind, summary, actor=None, contact=None, company=None, deal=None, data=None, note=None,
+           attachment=None, task=None, message=None):
     activity = Activity.objects.create(
         org=org,
         kind=kind,
@@ -16,11 +17,14 @@ def record(*, org, kind, summary, actor=None, contact=None, company=None, data=N
         actor=actor,
         contact=contact,
         company=company,
+        deal=deal,
         data=data or {},
         note=note,
         attachment=attachment,
+        task=task,
+        message=message,
     )
-    for target in (contact, company):
+    for target in (contact, company, deal):
         if target is not None:
             type(target).objects.filter(pk=target.pk).update(last_activity_at=activity.created_at)
     return activity
@@ -48,7 +52,7 @@ def _show(value):
 def record_changes(*, instance, before, actor, custom_field_defs=(), target_kw):
     """Diffs `instance` against a `snapshot()` and writes one activity per meaningful change.
 
-    `target_kw` is {"contact": obj} or {"company": obj}.
+    `target_kw` is {"contact": obj}, {"company": obj} or {"deal": obj}.
     """
     org = instance.org
     after = snapshot(instance, before["fields"].keys())
@@ -87,3 +91,18 @@ def record_changes(*, instance, before, actor, custom_field_defs=(), target_kw):
         record(org=org, kind=ActivityKind.TAG_ADDED, actor=actor, summary=f"Tagged “{tag.name}”", data={"tag": tag.pk}, **target_kw)
     for tag in before["tags"] - after["tags"]:
         record(org=org, kind=ActivityKind.TAG_REMOVED, actor=actor, summary=f"Removed tag “{tag.name}”", data={"tag": tag.pk}, **target_kw)
+
+
+def timeline_for(obj):
+    """Activities for a record's timeline. Contacts and companies also show their deals' events."""
+    from django.db.models import Q
+
+    from apps.contacts.models import Company, Contact
+
+    if isinstance(obj, Contact):
+        match = Q(contact=obj) | Q(deal__contact=obj)
+    elif isinstance(obj, Company):
+        match = Q(company=obj) | Q(deal__company=obj)
+    else:
+        match = Q(deal=obj)
+    return Activity.objects.filter(match).select_related("actor", "note__author", "attachment", "deal", "task", "message")
