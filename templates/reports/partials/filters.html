@@ -1,0 +1,33 @@
+{# Shared report filters: period, custom range, pipeline, owner/team. Changing any of them reloads the page. #}
+<form method="get" class="card filter-bar form-stack mb-6 grid items-end gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5" id="report-filters">
+  <div><label class="text-xs font-medium text-slate-500" for="f-period">Period</label>
+    <select name="period" id="f-period" onchange="this.form.requestSubmit()">
+      {% for key, label in periods.items %}<option value="{{ key }}" {% if key == period.key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></div>
+  <div class="{% if period.key != 'custom' %}hidden{% endif %} lg:col-span-1" id="custom-range">
+    <label class="text-xs font-medium text-slate-500">From – to</label>
+    <div class="flex gap-1"><input type="date" name="start" value="{{ period.start|date:'Y-m-d' }}" class="!mt-1" aria-label="From">
+      <input type="date" name="end" value="{{ period.last_day|date:'Y-m-d' }}" class="!mt-1" aria-label="To"></div>
+  </div>
+  <div><label class="text-xs font-medium text-slate-500" for="f-pipeline">Pipeline</label>
+    <select name="pipeline" id="f-pipeline" onchange="this.form.requestSubmit()">
+      {% for p in pipelines %}<option value="{{ p.pk }}" {% if pipeline and p.pk == pipeline.pk %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+      <option value="all" {% if not pipeline %}selected{% endif %}>All pipelines</option>
+    </select></div>
+  <div><label class="text-xs font-medium text-slate-500" for="f-owner">People</label>
+    <select name="owner" id="f-owner" onchange="this.form.requestSubmit()">
+      <option value="">Everyone</option>
+      <option value="me" {% if filters.owner == "me" %}selected{% endif %}>Just me</option>
+      {% for t in teams %}<option value="team-{{ t.pk }}" {% if filters.owner|slice:":5" == "team-" and filters.owner|slice:"5:" == t.pk|stringformat:"s" %}selected{% endif %}>Team: {{ t.name }}</option>{% endfor %}
+      {% for u in users %}<option value="{{ u.pk }}" {% if filters.owner == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+    </select></div>
+  <div class="flex gap-2"><button class="btn btn-secondary {% if period.key != 'custom' %}hidden{% endif %}" id="apply-range">Apply</button>
+    <span class="self-center text-xs text-slate-500">{{ period.start|date:"d M Y" }} – {{ period.last_day|date:"d M Y" }}</span></div>
+</form>
+<script>
+  document.getElementById("f-period").addEventListener("change", e => {
+    const custom = e.target.value === "custom";
+    document.getElementById("custom-range").classList.toggle("hidden", !custom);
+    document.getElementById("apply-range").classList.toggle("hidden", !custom);
+  });
+</script>

@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if target.pk %}Edit target{% else %}New target{% endif %}{% endblock %}
+{% block page_title %}<a href="{% url 'reports:targets' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Targets /</a> {% if target.pk %}Edit target{% else %}New target{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-lg space-y-6">{% csrf_token %}
+  {% include "partials/form.html" %}
+  <div class="flex justify-between">
+    <a href="{% url 'reports:targets' %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary">Save target</button>
+  </div>
+</form>
+{% endblock %}

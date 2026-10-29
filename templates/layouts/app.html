@@ -27,7 +27,8 @@
       {% include "partials/nav_link.html" with href=inbox_url label="Inbox" match="inbox" badge=inbox_unread_count %}
       {% url "automation:workflow_list" as automations_url %}
       {% include "partials/nav_link.html" with href=automations_url label="Automations" match="workflow" %}
-      {% include "partials/nav_link.html" with label="Reports" soon="Phase 6" %}
+      {% url "reports:overview" as reports_url %}
+      {% include "partials/nav_link.html" with href=reports_url label="Reports" ns_match="reports" %}
       <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">Marketing</p>
       {% url "campaigns:segment_list" as segments_url %}
       {% include "partials/nav_link.html" with href=segments_url label="Segments" match="segment" %}

@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+{% block title %}Report emails{% endblock %}
+{% block page_title %}<a href="{% url 'reports:overview' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Reports /</a> My report emails{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="card overflow-x-auto p-0 lg:col-span-2">
+    <table class="table">
+      <thead class="bg-slate-50"><tr><th>Report</th><th>When</th><th>Last sent</th><th>Status</th><th></th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for s in subscriptions %}
+        <tr>
+          <td class="font-medium">{{ s.get_kind_display }}</td>
+          <td>{{ s.get_frequency_display }}{% if s.frequency == "weekly" %} on {{ s.get_weekday_display }}{% endif %} at {{ s.hour|stringformat:"02d" }}:00</td>
+          <td class="text-slate-500">{{ s.last_sent_at|date:"d M H:i"|default:"Not yet" }}</td>
+          <td>{% if s.is_active %}<span class="badge bg-emerald-100 text-emerald-700">On</span>{% else %}<span class="badge bg-slate-100 text-slate-500">Paused</span>{% endif %}</td>
+          <td class="whitespace-nowrap text-right text-sm">
+            <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="pk" value="{{ s.pk }}"><button name="action" value="send" class="text-violet-600 hover:underline">Send me one now</button></form> ·
+            <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="pk" value="{{ s.pk }}"><button name="action" value="toggle" class="text-slate-600 hover:underline">{% if s.is_active %}Pause{% else %}Resume{% endif %}</button></form> ·
+            <form method="post" class="inline">{% csrf_token %}<input type="hidden" name="pk" value="{{ s.pk }}"><button name="action" value="delete" class="text-red-600 hover:underline">Remove</button></form>
+          </td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="py-8 text-center text-slate-500">You don't get any report emails yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" class="card form-stack h-fit space-y-4">{% csrf_token %}
+    <h2 class="font-semibold">Add a report email</h2>
+    <p class="text-sm text-slate-500"><strong>My pipeline digest</strong>: deals closing this week, overdue and idle deals, tasks due. {% if current_membership.is_manager %}<strong>Team sales summary</strong>: revenue, win rate, top reps and lost reasons.{% endif %}</p>
+    {% include "partials/form.html" %}
+    <button class="btn btn-primary">Schedule</button>
+  </form>
+</div>
+{% endblock %}

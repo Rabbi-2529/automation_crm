@@ -1,0 +1,18 @@
+{# Chart card with a Chart/Table toggle. The table (rendered by report-charts.js from the same data) is the accessible view. #}
+<section class="card" aria-labelledby="{{ id }}-title">
+  <div class="flex items-start justify-between gap-3">
+    <div><h2 class="font-semibold" id="{{ id }}-title">{{ title }}</h2><p class="text-xs text-slate-500">{{ subtitle }}</p></div>
+    {% if not empty_text %}
+    <div class="inline-flex shrink-0 rounded-lg bg-slate-100 p-0.5 text-xs" role="group" aria-label="View">
+      <button type="button" class="rounded-md bg-white px-2.5 py-1 font-medium shadow-sm" data-view="chart" data-for="{{ id }}" aria-pressed="true">Chart</button>
+      <button type="button" class="rounded-md px-2.5 py-1 text-slate-600" data-view="table" data-for="{{ id }}" aria-pressed="false">Table</button>
+    </div>
+    {% endif %}
+  </div>
+  {% if empty_text %}
+    <p class="grid h-56 place-items-center text-sm text-slate-500">{{ empty_text }}</p>
+  {% else %}
+    <div class="relative mt-4 h-64" data-chart-wrap="{{ id }}"><canvas id="chart-{{ id }}" role="img" aria-label="{{ title }} chart"></canvas></div>
+    <div class="mt-4 hidden max-h-64 overflow-auto" data-table-wrap="{{ id }}"></div>
+  {% endif %}
+</section>

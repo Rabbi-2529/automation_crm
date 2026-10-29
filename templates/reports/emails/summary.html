@@ -1,0 +1,22 @@
+{% load humanize %}<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#0f172a">
+  <p style="margin:0;color:#7c3aed;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase">{{ org.name }}</p>
+  <h1 style="margin:4px 0 16px;font-size:20px">Sales summary · {{ period.label }}</h1>
+  <p style="margin:0;color:#64748b;font-size:13px">Revenue won</p>
+  <p style="margin:2px 0 4px;font-size:32px;font-weight:bold">{{ org.currency }} {{ kpis.revenue|floatformat:0|intcomma }}</p>
+  {% if kpis.deltas.revenue is not None and kpis.deltas.revenue != "new" %}<p style="margin:0 0 16px;font-size:13px;color:{% if kpis.deltas.revenue >= 0 %}#047857{% else %}#b91c1c{% endif %}">{% if kpis.deltas.revenue >= 0 %}▲ +{% else %}▼ {% endif %}{{ kpis.deltas.revenue }}% <span style="color:#64748b">vs {{ kpis.previous_label }}</span></p>{% endif %}
+  <table style="width:100%;border-collapse:collapse;font-size:14px;margin:8px 0 20px">
+    <tr><td style="padding:6px 0;color:#64748b">Deals won / lost</td><td style="text-align:right">{{ kpis.won }} / {{ kpis.lost }}</td></tr>
+    <tr><td style="padding:6px 0;color:#64748b">Win rate</td><td style="text-align:right">{% if kpis.win_rate is not None %}{{ kpis.win_rate }}%{% else %}—{% endif %}</td></tr>
+    <tr><td style="padding:6px 0;color:#64748b">Open pipeline</td><td style="text-align:right">{{ org.currency }} {{ kpis.open_value|floatformat:0|intcomma }} <span style="color:#64748b">({{ kpis.open_count }})</span></td></tr>
+    <tr><td style="padding:6px 0;color:#64748b">New leads</td><td style="text-align:right">{{ kpis.new_leads }}</td></tr>
+  </table>
+  <h2 style="font-size:15px;margin:0 0 6px">Top reps</h2>
+  <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px">
+    {% for r in leaders %}<tr style="border-top:1px solid #e2e8f0"><td style="padding:6px 0">{{ forloop.counter }}. {{ r.user.display_name }}</td><td style="text-align:right">{{ org.currency }} {{ r.revenue|floatformat:0|intcomma }} <span style="color:#64748b">· {{ r.won }} won</span></td></tr>
+    {% empty %}<tr><td style="color:#64748b">No deals closed.</td></tr>{% endfor %}
+  </table>
+  {% if lost %}<h2 style="font-size:15px;margin:0 0 6px">Why deals were lost</h2>
+  <ul style="margin:0 0 20px;padding-left:18px;font-size:14px">{% for r in lost %}<li>{{ r.label }}: {{ r.count }}</li>{% endfor %}</ul>{% endif %}
+  <p><a href="{{ reports_url }}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-size:14px">Open reports</a></p>
+  <p style="color:#94a3b8;font-size:12px">You get this from ThingBD CRM. Change it under Reports → Email me reports.</p>
+</div>

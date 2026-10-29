@@ -1,0 +1,16 @@
+{% load humanize %}{% autoescape off %}{{ org.name }} sales summary: {{ period.label }}
+
+Revenue won: {{ org.currency }} {{ kpis.revenue|floatformat:0|intcomma }}{% if kpis.deltas.revenue is not None and kpis.deltas.revenue != "new" %} ({% if kpis.deltas.revenue >= 0 %}+{% endif %}{{ kpis.deltas.revenue }}% vs {{ kpis.previous_label }}){% endif %}
+Deals won: {{ kpis.won }}   Lost: {{ kpis.lost }}   Win rate: {% if kpis.win_rate is not None %}{{ kpis.win_rate }}%{% else %}-{% endif %}
+Open pipeline: {{ org.currency }} {{ kpis.open_value|floatformat:0|intcomma }} ({{ kpis.open_count }} deals, weighted {{ kpis.weighted|floatformat:0|intcomma }})
+New leads: {{ kpis.new_leads }}
+
+Top reps
+{% for r in leaders %}{{ forloop.counter }}. {{ r.user.display_name }}: {{ org.currency }} {{ r.revenue|floatformat:0|intcomma }} ({{ r.won }} won)
+{% empty %}No deals closed.
+{% endfor %}{% if lost %}
+Why deals were lost
+{% for r in lost %}- {{ r.label }}: {{ r.count }}
+{% endfor %}{% endif %}
+Full reports: {{ reports_url }}
+{% endautoescape %}

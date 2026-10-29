@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.automation",
     "apps.leads",
     "apps.campaigns",
+    "apps.reports",
 ]
 
 MIDDLEWARE = [
@@ -124,6 +125,7 @@ CELERY_BEAT_SCHEDULE = {
     "scan-scheduled-triggers": {"task": "apps.automation.tasks.scan_scheduled_triggers", "schedule": 900.0},
     "process-sequences": {"task": "apps.campaigns.tasks.process_sequences", "schedule": 60.0},
     "process-broadcasts": {"task": "apps.campaigns.tasks.process_broadcasts", "schedule": 60.0},
+    "send-scheduled-reports": {"task": "apps.reports.tasks.send_scheduled_reports", "schedule": 900.0},
 }
 
 LOGGING = {

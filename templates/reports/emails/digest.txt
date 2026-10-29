@@ -1,0 +1,22 @@
+{% load humanize %}{% autoescape off %}Hi {{ user.display_name }}, here's your pipeline ({{ org.name }}).
+
+Closing in the next 7 days
+{% for d in closing_soon %}- {{ d.title }}: {{ d.currency_code }} {{ d.value|floatformat:0|intcomma }}, {{ d.expected_close_date|date:"D d M" }} ({{ d.stage.name }})
+{% empty %}- Nothing.
+{% endfor %}
+Past their expected close date
+{% for d in overdue_deals %}- {{ d.title }}: was {{ d.expected_close_date|date:"d M" }}
+{% empty %}- Nothing.
+{% endfor %}
+Going quiet (no activity for a while)
+{% for d in idle_deals %}- {{ d.title }} in {{ d.stage.name }}
+{% empty %}- Nothing.
+{% endfor %}
+Tasks due
+{% for t in tasks_due %}- {{ t.title }}{% if t.due_at %} ({{ t.due_at|date:"d M H:i" }}){% endif %}
+{% empty %}- All done.
+{% endfor %}
+{{ period.label|capfirst }}: {{ kpis.won }} won ({{ org.currency }} {{ kpis.revenue|floatformat:0|intcomma }}), {{ kpis.new_leads }} new leads.
+
+{{ site }}/deals/?owner=me
+{% endautoescape %}

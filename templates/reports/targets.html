@@ -1,0 +1,28 @@
+{% extends "layouts/app.html" %}
+{% load humanize %}
+{% block title %}Targets{% endblock %}
+{% block page_title %}<a href="{% url 'reports:overview' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Reports /</a> Sales targets {{ year }}{% endblock %}
+{% block page_actions %}<a href="{% url 'reports:target_create' %}" class="btn btn-primary">+ New target</a>{% endblock %}
+{% block content %}
+<div class="card overflow-x-auto p-0">
+  <table class="table" data-datatable data-empty="No targets for {{ year }} yet. Set a monthly revenue goal for the team or for each rep.">
+    <thead class="bg-slate-50"><tr><th>Period</th><th>Who</th><th>Metric</th><th>Target</th><th>Actual</th><th>Progress</th><th data-orderable="false"></th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for row in rows %}{% with t=row.target %}
+      <tr class="{% if row.is_current %}bg-violet-50/40{% endif %}">
+        <td data-order="{{ t.period_start|date:'Ymd' }}">{{ t.period_label }}{% if row.is_current %} <span class="badge bg-violet-100 text-violet-700">Now</span>{% endif %}</td>
+        <td>{{ t.user.display_name|default:"Whole team" }}</td>
+        <td>{{ t.get_metric_display }}</td>
+        <td data-order="{{ t.value }}">{{ t.value|floatformat:0|intcomma }}</td>
+        <td data-order="{{ row.actual }}">{{ row.actual|floatformat:0|intcomma }}</td>
+        <td data-order="{{ row.percent|default:0 }}" class="min-w-36">
+          <span class="text-xs text-slate-600">{{ row.percent }}%</span>
+          <span class="mt-1 block h-1.5 overflow-hidden rounded-full bg-violet-100"><span class="block h-full rounded-full {% if row.percent >= 100 %}bg-emerald-600{% else %}bg-violet-600{% endif %}" style="width: {% if row.percent > 100 %}100{% else %}{{ row.percent }}{% endif %}%"></span></span></td>
+        <td class="text-right"><a href="{% url 'reports:target_edit' t.pk %}" class="text-sm text-violet-600 hover:underline">Edit</a> · <a href="{% url 'reports:target_delete' t.pk %}" class="text-sm text-red-600 hover:underline">Delete</a></td>
+      </tr>
+      {% endwith %}{% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-3 text-sm"><a href="?month={{ year|add:'-1' }}-01" class="text-violet-600 hover:underline">← {{ year|add:"-1" }}</a> · <a href="?month={{ year|add:'1' }}-01" class="text-violet-600 hover:underline">{{ year|add:"1" }} →</a></p>
+{% endblock %}

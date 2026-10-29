@@ -1,0 +1,15 @@
+{% load humanize %}<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;color:#0f172a;font-size:14px">
+  <p style="margin:0;color:#7c3aed;font-size:12px;font-weight:bold;letter-spacing:2px;text-transform:uppercase">{{ org.name }}</p>
+  <h1 style="margin:4px 0 4px;font-size:20px">Hi {{ user.display_name }}, here's your pipeline</h1>
+  <p style="margin:0 0 20px;color:#64748b">{{ period.label|capfirst }}: {{ kpis.won }} won · {{ org.currency }} {{ kpis.revenue|floatformat:0|intcomma }} · {{ kpis.new_leads }} new leads</p>
+  <h2 style="font-size:15px;margin:0 0 6px">Closing in the next 7 days</h2>
+  <ul style="margin:0 0 18px;padding-left:18px">{% for d in closing_soon %}<li><a href="{{ site }}/deals/{{ d.pk }}/" style="color:#0f172a">{{ d.title }}</a> · {{ d.currency_code }} {{ d.value|floatformat:0|intcomma }} · {{ d.expected_close_date|date:"D d M" }}</li>{% empty %}<li style="color:#64748b">Nothing this week.</li>{% endfor %}</ul>
+  {% if overdue_deals %}<h2 style="font-size:15px;margin:0 0 6px;color:#b91c1c">Past expected close</h2>
+  <ul style="margin:0 0 18px;padding-left:18px">{% for d in overdue_deals %}<li><a href="{{ site }}/deals/{{ d.pk }}/" style="color:#0f172a">{{ d.title }}</a> · was {{ d.expected_close_date|date:"d M" }}</li>{% endfor %}</ul>{% endif %}
+  {% if idle_deals %}<h2 style="font-size:15px;margin:0 0 6px">Going quiet</h2>
+  <ul style="margin:0 0 18px;padding-left:18px">{% for d in idle_deals %}<li><a href="{{ site }}/deals/{{ d.pk }}/" style="color:#0f172a">{{ d.title }}</a> · {{ d.stage.name }}</li>{% endfor %}</ul>{% endif %}
+  <h2 style="font-size:15px;margin:0 0 6px">Tasks due</h2>
+  <ul style="margin:0 0 18px;padding-left:18px">{% for t in tasks_due %}<li>{{ t.title }}{% if t.due_at %} <span style="color:#64748b">· {{ t.due_at|date:"d M H:i" }}</span>{% endif %}</li>{% empty %}<li style="color:#64748b">All done.</li>{% endfor %}</ul>
+  <p><a href="{{ site }}/tasks/" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Open my tasks</a></p>
+  <p style="color:#94a3b8;font-size:12px">You get this from ThingBD CRM. Change it under Reports → Email me reports.</p>
+</div>

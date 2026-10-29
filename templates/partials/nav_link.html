@@ -1,6 +1,6 @@
-{# Args: label, href, match (substring of the current url_name that marks this link active), soon (phase label), badge, badge_alert #}
+{# Args: label, href, match (substring of the current url_name that marks this link active), ns_match (whole URL namespace instead), soon (phase label), badge, badge_alert #}
 {% if soon %}
 <span class="flex items-center justify-between rounded-lg px-3 py-2 text-slate-500" title="Coming in {{ soon }}">{{ label }} <span class="text-[10px] uppercase">{{ soon }}</span></span>
 {% else %}
-<a href="{{ href }}" class="rounded-lg px-3 py-2 {% if match and match in url_name %}bg-[#121118] text-white ring-1 ring-[#8B5CF6]/40{% else %}hover:bg-[#121118] hover:text-white{% endif %} flex items-center justify-between">{{ label }}{% if badge %}<span class="rounded-full px-2 text-xs font-semibold {% if badge_alert %}bg-red-500 text-white{% else %}bg-[#8B5CF6] text-white{% endif %}" title="Due today or overdue">{{ badge }}</span>{% endif %}</a>
+<a href="{{ href }}" class="rounded-lg px-3 py-2 {% if ns_match and ns_match == ns or match and match in url_name and not ns_match %}bg-[#121118] text-white ring-1 ring-[#8B5CF6]/40{% else %}hover:bg-[#121118] hover:text-white{% endif %} flex items-center justify-between">{{ label }}{% if badge %}<span class="rounded-full px-2 text-xs font-semibold {% if badge_alert %}bg-red-500 text-white{% else %}bg-[#8B5CF6] text-white{% endif %}" title="Due today or overdue">{{ badge }}</span>{% endif %}</a>
 {% endif %}

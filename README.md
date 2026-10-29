@@ -14,8 +14,8 @@ ThingBD's ([thingbd.com](https://thingbd.com/)) multi-tenant CRM built on Django
 | 3 | Email & SMS (SMTP/IMAP, Twilio, BD HTTP gateways), templates, inbox, open/click tracking, call logs, calendar | ✅ done |
 | 4 | Automation engine: triggers, conditions, actions, waits, builder, run logs, webhooks | ✅ done |
 | 5 | **Lead management & communication automation**: web forms, lead scoring & grades, segments, email/SMS sequences, broadcasts, unsubscribe & SMS STOP, quiet hours, speed-to-lead / date / deal-idle triggers | ✅ done |
-| 6 | **Sales & reporting automation**: sales dashboards, funnel & win-rate, forecast, rep leaderboard, targets & quota tracking, scheduled email reports, activity reports | next |
-| 7 | REST API, outgoing webhooks, integrations (WhatsApp, Facebook lead ads, Google Calendar) | |
+| 6 | **Sales & reporting automation**: sales dashboard with charts, funnel & win rate, forecast, rep leaderboard, targets & attainment, scheduled email reports (team summary + rep pipeline digest), CSV exports | ✅ done |
+| 7 | REST API, outgoing webhooks, integrations (WhatsApp, Facebook lead ads, Google Calendar) | next |
 | 8 | Hardening, backups, production deploy | |
 
 ### Automation coverage
@@ -25,7 +25,7 @@ ThingBD's ([thingbd.com](https://thingbd.com/)) multi-tenant CRM built on Django
 | **Lead management** | Contact capture (manual, CSV, webhook), dedupe, lifecycle auto-advance from deals, owner assignment incl. round robin, "inactive N days" trigger | Phase 5: web forms with spam protection, lead scoring rules + hot/warm/cold grades, "lead not contacted within N hours" (speed-to-lead), segments |
 | **Workflow automation** | Triggers → conditions → actions, waits, "continue only if", run logs, webhooks in/out, loop protection | Phase 5: triggers for form submitted, lead grade changed, date fields (birthdays/renewals), deal idle; actions for sequences and score; sends pause outside quiet hours |
 | **SMS & communication** | 1:1 email/SMS, templates, inbox, open/click tracking, IMAP + Twilio inbound, workflow sends | Phase 5: multi-step email/SMS sequences that stop on reply, bulk broadcasts to segments, unsubscribe link + List-Unsubscribe, SMS STOP/START, quiet hours. Phase 7: WhatsApp |
-| **Sales & reporting** | Pipeline board totals, weighted forecast on the board, dashboard KPIs, deal-close-soon trigger | Phase 6: reports & dashboards, funnel/win-rate, rep leaderboard, targets, scheduled email reports |
+| **Sales & reporting** | Pipeline board totals, weighted forecast, dashboard KPIs, deal close-soon / idle triggers | Phase 6 (done): reports dashboard, funnel/win rate, forecast, leaderboard, targets, scheduled report emails, CSV exports |
 
 ## Run locally (no Docker)
 
@@ -70,6 +70,7 @@ apps/messaging/    ChannelSettings (encrypted secrets), templates, Conversation/
 apps/automation/   Workflow/Action/Run/StepLog; registry.py (vocabulary), engine.py, actions.py, conditions.py, builder UI
 apps/leads/        Web forms (public /f/<token>/, embeddable), lead scoring rules, score log, grade thresholds
 apps/campaigns/    Segments (SQL-evaluated conditions), sequences + enrollments, broadcasts + recipients
+apps/reports/      metrics.py (one Scope → KPIs, series, funnel, forecast, leaderboard), targets, scheduled report emails
 static/js/ui.js    Select2 on every form select, AJAX pickers, DataTables (client + server side); static/css/ui.css themes them
 templates/         base + app/auth layouts, shared form partial
 ```
@@ -129,6 +130,20 @@ Admins set it up under **Settings → Email & SMS**:
 - **Quiet hours** (Settings → Email & SMS → Sending rules): workflow sends, sequences and broadcasts wait for the sending window. Messages you write yourself go immediately.
 - **New workflow triggers**: web form submitted, lead grade changes, lead not contacted within N hours (speed to lead), date field such as birthdays/renewals (optionally yearly), deal idle N days. **New steps**: add to / remove from sequence, change lead score. **New conditions**: lead score, grade, unsubscribed (email/SMS), in segment.
 - Background jobs: sequences and broadcasts are processed every minute by Celery beat; scoring runs on each timeline event.
+
+## Sales & reporting (Phase 6)
+
+**Reports** in the sidebar (everyone can view; exports and targets are for managers):
+
+- **Filters** on every report: period (this/last month or quarter, last 30/90 days, this year, custom), pipeline, and people (everyone, me, a team, one rep). All numbers use the workspace time zone.
+- **KPIs**: revenue won (vs the previous period), deals won, win rate (won ÷ won + lost closed in the period), average deal, average sales cycle, new deals, open pipeline + weighted forecast, new leads and how many became customers. Team revenue target progress when one is set.
+- **Charts** (Chart.js, each with a Table view): revenue won over time, stage funnel (how far deals created in the period got, using stage history), forecast by expected close month (value vs weighted), lost reasons, lead sources.
+- **Leaderboard**: revenue, won/lost, win rate, open pipeline, new deals, emails, SMS, calls, tasks completed, target attainment per rep. CSV export.
+- **Targets**: monthly or quarterly goals for the team or a rep (revenue, deals won, new deals, new leads), with live progress.
+- **Report emails** (Reports → Email me reports): a daily/weekly/monthly **pipeline digest** for each rep (closing this week, overdue, going quiet, tasks due) and a **team sales summary** for managers. Sent by Celery beat (checked every 15 minutes) at the hour each person picks.
+- **Closed deals CSV** for the filtered period (days to close, lost reason, owner…).
+
+Chart colours were checked with a colour-blindness/contrast validator: violet `#7c3aed` for single series, plus orange `#eb6834` as the second series.
 
 ## Timeline events → automations
 

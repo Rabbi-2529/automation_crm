@@ -26,7 +26,7 @@ ROADMAP = [
     ("Phase 3", "Email & SMS, templates, inbox", False),
     ("Phase 4", "Automation engine: triggers → conditions → actions", True),
     ("Phase 5", "Lead & communication automation: forms, scoring, segments, sequences, broadcasts", True),
-    ("Phase 6", "Sales & reporting automation: dashboards, funnel, forecast, targets, scheduled reports", False),
+    ("Phase 6", "Sales & reporting automation: dashboards, funnel, forecast, targets, scheduled reports", True),
     ("Phase 7", "REST API, integrations (WhatsApp, Facebook lead ads)", False),
     ("Phase 8", "Hardening, backups, deploy", False),
 ]

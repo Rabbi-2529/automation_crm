@@ -1,0 +1,14 @@
+{# Stat tile. Args: label, value, delta (int %, "new" or None), delta_suffix, good_when_up (bool), note #}
+<div class="card p-4">
+  <p class="text-sm text-slate-500">{{ label }}</p>
+  <p class="mt-1 text-2xl font-semibold text-slate-900">{{ value }}</p>
+  {% if delta == "new" %}
+    <p class="mt-1 text-xs text-slate-500"><span class="font-medium text-slate-700">New</span> vs {{ previous }}</p>
+  {% elif delta is not None %}
+    <p class="mt-1 flex items-center gap-1 text-xs text-slate-500">
+      <span class="font-medium {% if delta > 0 and good_when_up or delta < 0 and not good_when_up %}text-emerald-700{% elif delta == 0 %}text-slate-600{% else %}text-red-700{% endif %}">
+        {% if delta > 0 %}▲ +{{ delta }}{% elif delta < 0 %}▼ {{ delta }}{% else %}● 0{% endif %}{{ delta_suffix|default:"%" }}</span>
+      vs {{ previous }}
+    </p>
+  {% elif note %}<p class="mt-1 text-xs text-slate-500">{{ note }}</p>{% endif %}
+</div>

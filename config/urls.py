@@ -10,6 +10,7 @@ urlpatterns = [
     path("", include("apps.automation.urls")),
     path("", include("apps.leads.urls")),
     path("", include("apps.campaigns.urls")),
+    path("", include("apps.reports.urls")),
     path("", include("apps.messaging.urls")),
     path("", include("apps.pipeline.urls")),
     path("", include("apps.contacts.urls")),

@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+{% load humanize %}
+{% block title %}Leaderboard{% endblock %}
+{% block page_title %}<a href="{% url 'reports:overview' %}?{{ request.GET.urlencode }}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Reports /</a> Leaderboard{% endblock %}
+{% block page_actions %}{% if current_membership.is_manager %}<a href="{% url 'reports:leaderboard_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Export CSV</a>{% endif %}{% endblock %}
+{% block content %}
+{% include "reports/partials/filters.html" %}
+<div class="card overflow-x-auto p-0">
+  <table class="table" data-datatable data-empty="No team members.">
+    <thead class="bg-slate-50"><tr>
+      <th>Rep</th><th>Revenue won</th><th>Target</th><th>Won</th><th>Lost</th><th>Win rate</th><th>Open pipeline</th><th>New deals</th>
+      <th title="Emails sent">Emails</th><th title="SMS sent">SMS</th><th>Calls</th><th title="Tasks completed">Tasks</th>
+    </tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for r in rows %}
+      <tr>
+        <td><span class="flex items-center gap-2"><span class="grid h-7 w-7 place-items-center rounded-full bg-violet-100 text-[11px] font-semibold text-violet-700">{{ r.user.initials }}</span>{{ r.user.display_name }}</span></td>
+        <td data-order="{{ r.revenue }}" class="whitespace-nowrap font-semibold">{{ current_org.currency }} {{ r.revenue|floatformat:0|intcomma }}</td>
+        <td data-order="{{ r.target.percent|default:-1 }}" class="min-w-32">{% if r.target %}
+          <span class="text-xs text-slate-600">{{ r.target.percent }}% of {{ r.target.target|floatformat:0|intcomma }}</span>
+          <span class="mt-1 block h-1.5 overflow-hidden rounded-full bg-violet-100"><span class="block h-full rounded-full {% if r.target.percent >= 100 %}bg-emerald-600{% else %}bg-violet-600{% endif %}" style="width: {% if r.target.percent > 100 %}100{% else %}{{ r.target.percent }}{% endif %}%"></span></span>
+        {% else %}<span class="text-slate-400">—</span>{% endif %}</td>
+        <td>{{ r.won }}</td><td>{{ r.lost }}</td>
+        <td data-order="{{ r.win_rate|default:-1 }}">{% if r.win_rate is not None %}{{ r.win_rate }}%{% else %}—{% endif %}</td>
+        <td data-order="{{ r.open_value }}" class="whitespace-nowrap">{{ r.open_value|floatformat:0|intcomma }} <span class="text-xs text-slate-400">({{ r.open_count }})</span></td>
+        <td>{{ r.new_deals }}</td><td>{{ r.emails }}</td><td>{{ r.sms }}</td><td>{{ r.calls }}</td><td>{{ r.tasks_done }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="mt-3 text-xs text-slate-500">Revenue, won/lost and win rate count deals closed in the period by their owner. Activity counts what each person did in the period. Targets show on month and quarter views.</p>
+{% endblock %}

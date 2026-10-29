@@ -1,0 +1,72 @@
+{% extends "layouts/app.html" %}
+{% load humanize static %}
+{% block title %}Reports{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js" defer></script>{% endblock %}
+{% block page_title %}Sales reports{% endblock %}
+{% block page_actions %}
+<a href="{% url 'reports:leaderboard' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Leaderboard</a>
+{% if current_membership.is_manager %}<a href="{% url 'reports:targets' %}" class="btn btn-secondary">Targets</a>
+<a href="{% url 'reports:closed_deals_export' %}?{{ request.GET.urlencode }}" class="btn btn-secondary">Export closed deals</a>{% endif %}
+<a href="{% url 'reports:my_reports' %}" class="btn btn-primary">Email me reports</a>
+{% endblock %}
+{% block content %}
+{% include "reports/partials/filters.html" %}
+
+{% with c=current_org.currency prev=kpis.previous_label %}
+<section class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Key numbers">
+  <div class="card p-5 sm:col-span-2 lg:row-span-2">
+    <p class="text-sm text-slate-500">Revenue won · {{ period.label|lower }}</p>
+    <p class="mt-2 text-5xl font-semibold tracking-tight text-slate-900">{{ c }} {{ kpis.revenue|floatformat:0|intcomma }}</p>
+    {% if kpis.deltas.revenue == "new" %}<p class="mt-2 text-sm text-slate-500">First revenue vs {{ prev }}</p>
+    {% elif kpis.deltas.revenue is not None %}
+    <p class="mt-2 text-sm text-slate-500"><span class="font-medium {% if kpis.deltas.revenue >= 0 %}text-emerald-700{% else %}text-red-700{% endif %}">{% if kpis.deltas.revenue > 0 %}▲ +{% elif kpis.deltas.revenue < 0 %}▼ {% else %}● {% endif %}{{ kpis.deltas.revenue }}%</span> vs {{ prev }}</p>
+    {% endif %}
+    {% for t in targets %}{% if t.target.metric == "revenue" %}
+    <div class="mt-5">
+      <div class="flex justify-between text-sm"><span class="text-slate-600">Team target {{ c }} {{ t.target.value|floatformat:0|intcomma }}</span><span class="font-medium text-slate-800">{{ t.percent }}%</span></div>
+      <div class="mt-1.5 h-2.5 overflow-hidden rounded-full bg-violet-100" role="progressbar" aria-valuenow="{{ t.percent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Revenue target attainment">
+        <div class="h-full rounded-full {% if t.percent >= 100 %}bg-emerald-600{% else %}bg-violet-600{% endif %}" style="width: {% if t.percent > 100 %}100{% else %}{{ t.percent }}{% endif %}%"></div></div>
+    </div>
+    {% endif %}{% endfor %}
+    <dl class="mt-5 grid grid-cols-3 gap-3 border-t border-slate-100 pt-4 text-sm">
+      <div><dt class="text-slate-500">Avg deal</dt><dd class="font-semibold">{% if kpis.avg_deal %}{{ c }} {{ kpis.avg_deal|floatformat:0|intcomma }}{% else %}—{% endif %}</dd></div>
+      <div><dt class="text-slate-500">Sales cycle</dt><dd class="font-semibold">{% if kpis.avg_cycle_days is not None %}{{ kpis.avg_cycle_days }} day{{ kpis.avg_cycle_days|pluralize }}{% else %}—{% endif %}</dd></div>
+      <div><dt class="text-slate-500">New deals</dt><dd class="font-semibold">{{ kpis.new_deals }}</dd></div>
+    </dl>
+  </div>
+  {% include "reports/partials/kpi.html" with label="Deals won" value=kpis.won delta=kpis.deltas.won good_when_up=True previous=prev %}
+  {% if kpis.win_rate is None %}{% include "reports/partials/kpi.html" with label="Win rate" value="—" note="No deals closed yet" %}
+  {% else %}{% with wr=kpis.win_rate|stringformat:"d"|add:"%" %}{% include "reports/partials/kpi.html" with label="Win rate" value=wr delta=kpis.deltas.win_rate delta_suffix=" pts" good_when_up=True previous=prev %}{% endwith %}{% endif %}
+  <div class="card p-4"><p class="text-sm text-slate-500">Open pipeline</p><p class="mt-1 text-2xl font-semibold">{{ c }} {{ kpis.open_value|floatformat:0|intcomma }}</p>
+    <p class="mt-1 text-xs text-slate-500">{{ kpis.open_count }} deal{{ kpis.open_count|pluralize }} · weighted {{ kpis.weighted|floatformat:0|intcomma }}</p></div>
+  <div class="card p-4"><p class="text-sm text-slate-500">New leads</p><p class="mt-1 text-2xl font-semibold">{{ kpis.new_leads }}</p>
+    <p class="mt-1 text-xs text-slate-500">{% if kpis.lead_conversion is not None %}{{ kpis.lead_conversion }}% already customers{% endif %}{% if kpis.deltas.new_leads is not None and kpis.deltas.new_leads != "new" %} · {% if kpis.deltas.new_leads >= 0 %}+{% endif %}{{ kpis.deltas.new_leads }}% vs {{ prev }}{% endif %}</p></div>
+</section>
+{% endwith %}
+
+{{ chart_data|json_script:"chart-data" }}
+<div class="grid gap-6 lg:grid-cols-2">
+  {% include "reports/partials/chart_card.html" with id="revenue" title="Revenue won" subtitle=period.label|add:" · by "|add:revenue.bucket %}
+  {% include "reports/partials/chart_card.html" with id="funnel" title="Stage funnel" subtitle="How far deals created in this period got" empty_text=funnel|yesno:",Pick one pipeline to see its funnel." %}
+  {% include "reports/partials/chart_card.html" with id="forecast" title="Forecast by expected close month" subtitle="Open deals: full value and weighted by stage probability" %}
+  {% include "reports/partials/chart_card.html" with id="lost" title="Why deals were lost" subtitle=period.label empty_text=lost|yesno:",No lost deals in this period." %}
+  {% include "reports/partials/chart_card.html" with id="sources" title="Where new leads came from" subtitle=period.label empty_text=sources|yesno:",No new leads in this period." %}
+
+  <section class="card">
+    <div class="flex items-center justify-between"><h2 class="font-semibold">Top performers</h2><a href="{% url 'reports:leaderboard' %}?{{ request.GET.urlencode }}" class="text-sm text-violet-600 hover:underline">Full leaderboard</a></div>
+    <ol class="mt-3 divide-y divide-slate-100 text-sm">
+      {% for row in leaders %}
+      <li class="flex items-center gap-3 py-2.5">
+        <span class="w-5 text-right text-slate-400">{{ forloop.counter }}</span>
+        <span class="grid h-8 w-8 place-items-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700">{{ row.user.initials }}</span>
+        <span class="min-w-0 flex-1"><span class="block truncate font-medium">{{ row.user.display_name }}</span>
+          <span class="text-xs text-slate-500">{{ row.won }} won{% if row.win_rate is not None %} · {{ row.win_rate }}% win rate{% endif %}</span>
+          {% if row.target %}<span class="mt-1 block h-1.5 w-full max-w-40 overflow-hidden rounded-full bg-violet-100"><span class="block h-full rounded-full bg-violet-600" style="width: {% if row.target.percent > 100 %}100{% else %}{{ row.target.percent }}{% endif %}%"></span></span>{% endif %}</span>
+        <span class="text-right font-semibold">{{ current_org.currency }} {{ row.revenue|floatformat:0|intcomma }}{% if row.target %}<span class="block text-xs font-normal text-slate-500">{{ row.target.percent }}% of target</span>{% endif %}</span>
+      </li>
+      {% empty %}<li class="py-6 text-center text-slate-500">No one has closed deals in this period yet.</li>{% endfor %}
+    </ol>
+  </section>
+</div>
+<script src="{% static 'js/report-charts.js' %}" defer></script>
+{% endblock %}
