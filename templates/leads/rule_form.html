@@ -1,0 +1,33 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if rule.pk %}Edit rule{% else %}New rule{% endif %}{% endblock %}
+{% block page_title %}<a href="{% url 'leads:scoring' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Lead scoring /</a> {% if rule.pk %}Edit {{ rule.name }}{% else %}New scoring rule{% endif %}{% endblock %}
+{% block content %}
+{% include "partials/errors.html" %}
+<form id="builder-form" method="post" class="form-stack max-w-3xl space-y-6">{% csrf_token %}
+  <section class="card space-y-4">{% include "partials/form.html" %}</section>
+  <section class="card" id="profile-conditions">
+    <h2 class="font-semibold">Profile: give points while…</h2>
+    <p class="mb-2 text-sm text-slate-500">Only for <em>profile</em> rules. Points are removed again if the contact stops matching.</p>
+    {% include "automation/partials/conditions_builder.html" %}
+  </section>
+  <div class="flex justify-between">
+    <a href="{% url 'leads:scoring' %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary">Save rule</button>
+  </div>
+</form>
+<script>
+  // Show the relevant half: conditions for profile rules, event + cap for behaviour rules.
+  document.addEventListener("DOMContentLoaded", () => {
+    const sync = () => {
+      const kind = document.querySelector("input[name=kind]:checked")?.value;
+      document.getElementById("profile-conditions").hidden = kind !== "profile";
+      ["event", "max_times"].forEach(name => {
+        const wrap = document.querySelector(`[name=${name}]`)?.closest(".form-stack > div");
+        if (wrap) wrap.hidden = kind !== "event";
+      });
+    };
+    document.querySelectorAll("input[name=kind]").forEach(el => el.addEventListener("change", sync));
+    sync();
+  });
+</script>
+{% endblock %}

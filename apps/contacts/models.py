@@ -135,6 +135,13 @@ class Contact(OrgScopedModel, CustomFieldsMixin):
     tags = models.ManyToManyField(Tag, blank=True, related_name="contacts")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     last_activity_at = models.DateTimeField(null=True, blank=True)
+    # Lead scoring (Phase 5): kept up to date by apps.leads.scoring.
+    score = models.IntegerField(default=0, db_index=True)
+    grade = models.CharField(max_length=4, choices=[("cold", "Cold"), ("warm", "Warm"), ("hot", "Hot")], default="cold")
+    # Consent: automated/marketing sends skip opted-out contacts.
+    email_opt_out = models.BooleanField(default=False)
+    sms_opt_out = models.BooleanField(default=False)
+    opted_out_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["first_name", "last_name", "email"]

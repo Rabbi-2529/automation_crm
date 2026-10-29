@@ -16,6 +16,8 @@ CONTACT_KINDS = {
     ActivityKind.SMS_RECEIVED: "sms_received",
     ActivityKind.CALL_LOGGED: "call_logged",
     ActivityKind.TASK_COMPLETED: "task_completed",
+    ActivityKind.FORM_SUBMITTED: "form_submitted",
+    ActivityKind.LEAD_GRADE_CHANGED: "lead_grade_changed",
 }
 DEAL_KINDS = {
     ActivityKind.CREATED: "deal_created",

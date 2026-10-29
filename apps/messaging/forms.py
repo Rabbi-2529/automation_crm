@@ -164,3 +164,15 @@ class CallLogForm(forms.ModelForm):
         self.fields["deal"].queryset = Deal.objects.for_org(contact.org).filter(contact=contact)
         self.fields["called_at"].input_formats = ["%Y-%m-%dT%H:%M"]
         self.initial.setdefault("called_at", timezone.localtime().replace(second=0, microsecond=0))
+
+
+class SendingRulesForm(forms.ModelForm):
+    class Meta:
+        model = ChannelSettings
+        fields = ["quiet_hours_enabled", "send_window_start", "send_window_end", "sms_opt_out_footer"]
+        widgets = {"send_window_start": forms.TimeInput(attrs={"type": "time"}, format="%H:%M"),
+                   "send_window_end": forms.TimeInput(attrs={"type": "time"}, format="%H:%M")}
+        labels = {"quiet_hours_enabled": "Only send automated messages inside the sending window",
+                  "send_window_start": "Window opens", "send_window_end": "Window closes",
+                  "sms_opt_out_footer": "Add “Reply STOP to opt out” to marketing SMS"}
+        help_texts = {"send_window_start": "Workspace time zone. Workflows, sequences and broadcasts wait until the window opens."}

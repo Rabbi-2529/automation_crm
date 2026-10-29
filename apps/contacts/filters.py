@@ -38,6 +38,14 @@ def filter_contacts(queryset, params):
         queryset = queryset.filter(owner__isnull=True) if owner == "none" else queryset.filter(owner__pk=owner)
     if company := params.get("company"):
         queryset = queryset.filter(company__pk=company)
+    if grade := params.get("grade"):
+        queryset = queryset.filter(grade=grade)
+    if segment_id := params.get("segment"):
+        from apps.campaigns.models import Segment
+
+        segment = Segment.objects.filter(pk=segment_id).first() if str(segment_id).isdigit() else None
+        # The segment query is scoped to the segment's own org, so a foreign id simply matches nobody here.
+        queryset = queryset.filter(pk__in=segment.contacts().values("pk")) if segment else queryset.none()
 
     sort = CONTACT_SORTS.get(params.get("sort"), CONTACT_SORTS["-created"])
     return queryset.order_by(*sort, "pk").distinct()

@@ -14,6 +14,7 @@ urlpatterns = [
     path("contacts/<int:pk>/", views.ContactDetailView.as_view(), name="contact_detail"),
     path("contacts/<int:pk>/edit/", views.ContactUpdateView.as_view(), name="contact_edit"),
     path("contacts/<int:pk>/delete/", views.ContactDeleteView.as_view(), name="contact_delete"),
+    path("contacts/<int:pk>/consent/", views.ContactConsentView.as_view(), name="contact_consent"),
     path("companies/", views.CompanyListView.as_view(), name="company_list"),
     path("companies/new/", views.CompanyCreateView.as_view(), name="company_create"),
     path("companies/lookup/", views.CompanyLookupView.as_view(), name="company_lookup"),

@@ -1,0 +1,18 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if segment.pk %}Edit segment{% else %}New segment{% endif %}{% endblock %}
+{% block page_title %}<a href="{% url 'campaigns:segment_list' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Segments /</a> {% if segment.pk %}Edit {{ segment.name }}{% else %}New segment{% endif %}{% endblock %}
+{% block content %}
+{% include "partials/errors.html" %}
+<form id="builder-form" method="post" class="form-stack max-w-3xl space-y-6">{% csrf_token %}
+  <section class="card space-y-4">{% include "partials/form.html" %}</section>
+  <section class="card">
+    <h2 class="font-semibold">Contacts who match</h2>
+    {% if preview is not None %}<p class="text-sm text-slate-500">{{ preview }} contact{{ preview|pluralize }} match right now. The list updates by itself as contacts change.</p>{% endif %}
+    {% include "automation/partials/conditions_builder.html" %}
+  </section>
+  <div class="flex justify-between">
+    <a href="{% url 'campaigns:segment_list' %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary">Save and view contacts</button>
+  </div>
+</form>
+{% endblock %}

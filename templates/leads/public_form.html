@@ -1,0 +1,51 @@
+{% extends "public/base.html" %}
+{% block title %}{{ webform.title }} · {{ org.name }}{% endblock %}
+{% block body_class %}{% if embed %}bg-transparent{% else %}min-h-screen bg-slate-50{% endif %}{% endblock %}
+{% block body %}
+<main class="{% if embed %}p-1{% else %}mx-auto max-w-lg px-4 py-12{% endif %}" id="form-root">
+  <div class="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+    {% if not embed %}<p class="text-sm font-semibold uppercase tracking-[0.15em] text-violet-600">{{ org.name }}</p>{% endif %}
+    {% if done %}
+      <h1 class="mt-1 text-xl font-semibold">Thank you!</h1>
+      <p class="mt-2 whitespace-pre-line text-sm text-slate-600">{{ webform.success_message }}</p>
+    {% elif closed or not webform.is_active %}
+      <h1 class="mt-1 text-xl font-semibold">This form is closed</h1>
+      <p class="mt-2 text-sm text-slate-600">It isn't accepting responses right now.</p>
+    {% elif throttled %}
+      <h1 class="mt-1 text-xl font-semibold">Too many attempts</h1>
+      <p class="mt-2 text-sm text-slate-600">Please wait a few minutes and try again.</p>
+    {% else %}
+      <h1 class="mt-1 text-xl font-semibold">{{ webform.title }}</h1>
+      {% if webform.intro %}<p class="mt-2 whitespace-pre-line text-sm text-slate-600">{{ webform.intro }}</p>{% endif %}
+      <form method="post" class="mt-6 space-y-4" novalidate>
+        {% for key, value in utm.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+        {{ form.ts }}
+        <div style="position:absolute;left:-10000px" aria-hidden="true"><label>Website {{ form.website }}</label></div>
+        {% for field in form.visible_fields %}{% if field.name != "website" %}
+        <div>
+          {% if field.widget_type == "checkbox" %}
+            <label class="flex items-start gap-2 text-sm text-slate-700">{{ field }} <span>{{ field.label }}</span></label>
+          {% else %}
+            <label for="{{ field.id_for_label }}" class="text-sm font-medium text-slate-700">{{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}</label>
+            {{ field }}
+          {% endif %}
+          {% for e in field.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
+        </div>
+        {% endif %}{% endfor %}
+        <button class="w-full rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-700">{{ webform.submit_label }}</button>
+      </form>
+    {% endif %}
+  </div>
+  {% if not embed %}<p class="mt-4 text-center text-xs text-slate-400">Powered by ThingBD CRM</p>{% endif %}
+</main>
+{% if embed %}
+<script>
+  // Tell the host page how tall we are so its iframe can fit.
+  (function () {
+    const send = () => parent.postMessage({ thingbdForm: "{{ webform.token|escapejs }}", height: document.documentElement.scrollHeight }, "*");
+    window.addEventListener("load", send);
+    new ResizeObserver(send).observe(document.body);
+  })();
+</script>
+{% endif %}
+{% endblock %}

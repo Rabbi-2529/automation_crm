@@ -39,9 +39,14 @@ def record(*, org, kind, summary, actor=None, contact=None, company=None, deal=N
 
 
 def _dispatch(activity):
-    from apps.automation.events import dispatch
+    """After-commit hooks. Each one is cheap when its feature isn't in use (it checks before queueing work)."""
+    from apps.automation.events import dispatch as automation
+    from apps.campaigns.engine import dispatch as sequences
+    from apps.leads.scoring import dispatch as scoring
 
-    dispatch(activity)
+    sequences(activity)  # replies/unsubscribes stop sequences first
+    scoring(activity)
+    automation(activity)
 
 
 def snapshot(instance, fields):

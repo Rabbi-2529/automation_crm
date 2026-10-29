@@ -1,0 +1,26 @@
+{% extends "layouts/app.html" %}
+{% block title %}Broadcasts{% endblock %}
+{% block page_title %}Broadcasts{% endblock %}
+{% block page_actions %}{% if current_membership.is_manager %}
+<a href="{% url 'campaigns:broadcast_create' %}?channel=email" class="btn btn-primary">+ Email broadcast</a>
+<a href="{% url 'campaigns:broadcast_create' %}?channel=sms" class="btn btn-secondary">+ SMS broadcast</a>
+{% endif %}{% endblock %}
+{% block content %}
+<div class="card overflow-x-auto p-0">
+  <table class="table" data-datatable data-empty="No broadcasts yet. Send one message to a whole segment, e.g. an Eid offer to hot leads.">
+    <thead class="bg-slate-50"><tr><th>Broadcast</th><th>Channel</th><th>Segment</th><th>Recipients</th><th>Status</th><th>When</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for b in broadcasts %}
+      <tr>
+        <td><a href="{% url 'campaigns:broadcast_detail' b.pk %}" class="font-medium text-slate-900 hover:text-violet-700">{{ b.name }}</a></td>
+        <td>{{ b.get_channel_display }}</td>
+        <td>{{ b.segment.name }}</td>
+        <td>{{ b.recipient_count|default:"—" }}</td>
+        <td><span class="badge {% if b.status == 'sent' %}bg-emerald-100 text-emerald-700{% elif b.status == 'sending' %}bg-sky-100 text-sky-700{% elif b.status == 'scheduled' %}bg-amber-100 text-amber-700{% else %}bg-slate-100 text-slate-600{% endif %}">{{ b.get_status_display }}</span></td>
+        <td data-order="{{ b.scheduled_at|date:'U'|default:0 }}" class="text-slate-500">{{ b.scheduled_at|date:"d M Y H:i"|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

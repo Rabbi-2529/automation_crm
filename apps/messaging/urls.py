@@ -21,5 +21,6 @@ urlpatterns = [
     # Public: hit by email clients and Twilio, not by logged-in users.
     path("t/o/<uuid:tracking_id>.gif", views.track_open, name="track_open"),
     path("t/c/<str:token>/", views.track_click, name="track_click"),
+    path("u/<str:token>/", views.UnsubscribeView.as_view(), name="unsubscribe"),
     path("webhooks/twilio/<str:token>/sms/", views.TwilioSmsWebhook.as_view(), name="twilio_sms"),
 ]

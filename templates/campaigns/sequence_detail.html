@@ -1,0 +1,75 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ sequence.name }}{% endblock %}
+{% block page_title %}
+<a href="{% url 'campaigns:sequence_list' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Sequences /</a> {{ sequence.name }}
+{% if sequence.is_active %}<span class="badge ml-2 bg-emerald-100 align-middle text-emerald-700">● Sending</span>{% else %}<span class="badge ml-2 bg-slate-100 align-middle text-slate-500">Paused</span>{% endif %}
+{% endblock %}
+{% block page_actions %}{% if current_membership.is_manager %}
+<a href="{% url 'campaigns:sequence_edit' sequence.pk %}" class="btn btn-secondary">Edit</a>
+<a href="{% url 'campaigns:sequence_delete' sequence.pk %}" class="btn btn-secondary text-red-600">Delete</a>
+{% endif %}{% endblock %}
+{% block content %}
+<div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+  {% for value, label in statuses %}{% if value in "active completed replied unsubscribed exited" %}
+  <div class="card p-4"><p class="text-xs text-slate-500">{{ label }}</p><p class="text-2xl font-semibold">{% for k, n in counts.items %}{% if k == value %}{{ n }}{% endif %}{% endfor %}{% if value not in counts %}0{% endif %}</p></div>
+  {% endif %}{% endfor %}
+</div>
+
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <div class="card overflow-x-auto p-0">
+      <h2 class="px-4 pt-4 font-semibold">Steps</h2>
+      <table class="table">
+        <thead class="bg-slate-50"><tr><th>#</th><th>When</th><th>Message</th><th>Sent</th><th>Opened</th><th>Clicked</th><th>Skipped</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for row in steps %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td class="whitespace-nowrap text-slate-500">{% if forloop.first %}+{% else %}then +{% endif %}{{ row.step.delay_days }}d{% if row.step.delay_hours %} {{ row.step.delay_hours }}h{% endif %}</td>
+            <td><span class="badge {% if row.step.channel == 'sms' %}bg-emerald-100 text-emerald-700{% else %}bg-sky-100 text-sky-700{% endif %}">{{ row.step.get_channel_display }}</span>
+              {% if row.step.subject %}{{ row.step.subject|truncatechars:60 }}{% elif row.step.template %}{{ row.step.template.name }}{% else %}{{ row.step.body|truncatechars:60 }}{% endif %}</td>
+            <td>{{ row.sent }}{% if row.failed %} <span class="text-xs text-red-600">({{ row.failed }} failed)</span>{% endif %}</td>
+            <td>{% if row.step.channel == "email" %}{{ row.opened }}{% else %}—{% endif %}</td>
+            <td>{% if row.step.channel == "email" %}{{ row.clicked }}{% else %}—{% endif %}</td>
+            <td>{{ row.skipped }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card overflow-x-auto p-0">
+      <h2 class="px-4 pt-4 font-semibold">People</h2>
+      <table class="table" data-datatable data-empty="Nobody yet. Add a segment, add from a contact page, or use the “Add to sequence” workflow step.">
+        <thead class="bg-slate-50"><tr><th>Contact</th><th>Status</th><th>Step</th><th>Next send</th><th>Added</th><th data-orderable="false"></th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for e in enrollments %}
+          <tr>
+            <td><a href="{% url 'contacts:contact_detail' e.contact_id %}" class="hover:text-violet-700">{{ e.contact.display_name }}</a></td>
+            <td>{{ e.get_status_display }}</td>
+            <td>{{ e.current_step }}/{{ steps|length }}</td>
+            <td data-order="{{ e.next_run_at|date:'U'|default:0 }}" class="text-slate-500">{{ e.next_run_at|date:"d M H:i"|default:"—" }}</td>
+            <td data-order="{{ e.created_at|date:'U' }}" class="text-slate-500">{{ e.created_at|date:"d M" }}{% if e.enrolled_by %} · {{ e.enrolled_by.display_name }}{% endif %}</td>
+            <td class="text-right">{% if e.status == "active" and current_membership.is_manager %}<form method="post" action="{% url 'campaigns:enrollment_remove' e.pk %}">{% csrf_token %}<button class="text-sm text-red-600 hover:underline">Remove</button></form>{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <aside class="space-y-6">
+    {% if current_membership.is_manager %}
+    <form method="post" action="{% url 'campaigns:sequence_enroll_segment' sequence.pk %}" class="card form-stack space-y-3 text-sm">{% csrf_token %}
+      <h2 class="font-semibold">Add a whole segment</h2>
+      <select name="segment" required aria-label="Segment"><option value="">Pick a segment</option>{% for s in segments %}<option value="{{ s.pk }}">{{ s.name }}</option>{% endfor %}</select>
+      <button class="btn btn-secondary">Add contacts</button>
+    </form>
+    {% endif %}
+    <div class="card text-sm text-slate-600">
+      <h2 class="font-semibold text-slate-900">Settings</h2>
+      <p class="mt-2">Sends as: {{ sequence.get_send_as_display }}</p>
+      <p>{% if sequence.exit_on_reply %}Stops when the contact replies.{% else %}Keeps going after replies.{% endif %}</p>
+      {% if sequence.exit_conditions.rules %}<p>Also stops on {{ sequence.exit_conditions.rules|length }} exit condition{{ sequence.exit_conditions.rules|length|pluralize }}.</p>{% endif %}
+    </div>
+  </aside>
+</div>
+{% endblock %}

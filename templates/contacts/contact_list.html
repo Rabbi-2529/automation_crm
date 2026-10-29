@@ -9,7 +9,7 @@
 <a href="{% url 'contacts:contact_create' %}" class="btn btn-primary">+ New contact</a>
 {% endblock %}
 {% block content %}
-<form id="filters" class="card filter-bar form-stack mb-4 grid gap-3 p-4 sm:grid-cols-3">
+<form id="filters" class="card filter-bar form-stack mb-4 grid gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">
   <select name="stage" aria-label="Lifecycle stage">
     <option value="">All stages</option>
     {% for value, label in stages %}<option value="{{ value }}" {% if filters.stage == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
@@ -22,6 +22,16 @@
     <option value="">Any owner</option>
     <option value="none" {% if filters.owner == "none" %}selected{% endif %}>Unassigned</option>
     {% for u in owners %}<option value="{{ u.pk }}" {% if filters.owner == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
+  </select>
+  <select name="grade" aria-label="Lead grade">
+    <option value="">Any lead grade</option>
+    <option value="hot" {% if filters.grade == "hot" %}selected{% endif %}>Hot</option>
+    <option value="warm" {% if filters.grade == "warm" %}selected{% endif %}>Warm</option>
+    <option value="cold" {% if filters.grade == "cold" %}selected{% endif %}>Cold</option>
+  </select>
+  <select name="segment" aria-label="Segment">
+    <option value="">All contacts</option>
+    {% for s in segments %}<option value="{{ s.pk }}" {% if filters.segment == s.pk|stringformat:"s" %}selected{% endif %}>Segment: {{ s.name }}</option>{% endfor %}
   </select>
 </form>
 
@@ -44,11 +54,11 @@
 
 <div id="results" class="card overflow-hidden p-0">
   <table class="w-full" data-dt-source="{% url 'contacts:contact_table' %}" data-dt-filters="#filters"
-         data-order='[[7, "desc"]]' data-initial-search="{{ filters.q }}" data-search-placeholder="Search name, email, phone, company…"
+         data-order='[[8, "desc"]]' data-initial-search="{{ filters.q }}" data-search-placeholder="Search name, email, phone, company…"
          data-empty="No contacts yet. Add one or import a CSV.">
     <thead><tr>
       <th data-orderable="false" class="w-8"><input type="checkbox" id="select-all" aria-label="Select all on this page" class="h-4 w-4"></th>
-      <th>Name</th><th>Company</th><th>Email / phone</th><th>Stage</th><th data-orderable="false">Tags</th><th>Owner</th><th>Created</th>
+      <th>Name</th><th>Company</th><th>Email / phone</th><th>Stage</th><th>Score</th><th data-orderable="false">Tags</th><th>Owner</th><th>Created</th>
     </tr></thead>
   </table>
 </div>

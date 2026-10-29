@@ -13,10 +13,19 @@ ThingBD's ([thingbd.com](https://thingbd.com/)) multi-tenant CRM built on Django
 | 2 | Pipelines, deals, kanban, won/lost, tasks & email reminders | ✅ done |
 | 3 | Email & SMS (SMTP/IMAP, Twilio, BD HTTP gateways), templates, inbox, open/click tracking, call logs, calendar | ✅ done |
 | 4 | Automation engine: triggers, conditions, actions, waits, builder, run logs, webhooks | ✅ done |
-| 5 | Web forms, lead scoring, drip campaigns | next |
-| 6 | Reports & dashboards | |
-| 7 | REST API, webhooks, integrations | |
+| 5 | **Lead management & communication automation**: web forms, lead scoring & grades, segments, email/SMS sequences, broadcasts, unsubscribe & SMS STOP, quiet hours, speed-to-lead / date / deal-idle triggers | ✅ done |
+| 6 | **Sales & reporting automation**: sales dashboards, funnel & win-rate, forecast, rep leaderboard, targets & quota tracking, scheduled email reports, activity reports | next |
+| 7 | REST API, outgoing webhooks, integrations (WhatsApp, Facebook lead ads, Google Calendar) | |
 | 8 | Hardening, backups, production deploy | |
+
+### Automation coverage
+
+| Area | Already built | Added to the roadmap |
+|---|---|---|
+| **Lead management** | Contact capture (manual, CSV, webhook), dedupe, lifecycle auto-advance from deals, owner assignment incl. round robin, "inactive N days" trigger | Phase 5: web forms with spam protection, lead scoring rules + hot/warm/cold grades, "lead not contacted within N hours" (speed-to-lead), segments |
+| **Workflow automation** | Triggers → conditions → actions, waits, "continue only if", run logs, webhooks in/out, loop protection | Phase 5: triggers for form submitted, lead grade changed, date fields (birthdays/renewals), deal idle; actions for sequences and score; sends pause outside quiet hours |
+| **SMS & communication** | 1:1 email/SMS, templates, inbox, open/click tracking, IMAP + Twilio inbound, workflow sends | Phase 5: multi-step email/SMS sequences that stop on reply, bulk broadcasts to segments, unsubscribe link + List-Unsubscribe, SMS STOP/START, quiet hours. Phase 7: WhatsApp |
+| **Sales & reporting** | Pipeline board totals, weighted forecast on the board, dashboard KPIs, deal-close-soon trigger | Phase 6: reports & dashboards, funnel/win-rate, rep leaderboard, targets, scheduled email reports |
 
 ## Run locally (no Docker)
 
@@ -59,6 +68,8 @@ apps/pipeline/     Pipeline, Stage, Deal, LostReason; kanban board, won/lost, se
 apps/tasks/        Task with due time + reminder; Celery beat job (or `manage.py send_task_reminders`) emails reminders; FullCalendar feed
 apps/messaging/    ChannelSettings (encrypted secrets), templates, Conversation/Message, tracking, IMAP + Twilio inbound, call logs
 apps/automation/   Workflow/Action/Run/StepLog; registry.py (vocabulary), engine.py, actions.py, conditions.py, builder UI
+apps/leads/        Web forms (public /f/<token>/, embeddable), lead scoring rules, score log, grade thresholds
+apps/campaigns/    Segments (SQL-evaluated conditions), sequences + enrollments, broadcasts + recipients
 static/js/ui.js    Select2 on every form select, AJAX pickers, DataTables (client + server side); static/css/ui.css themes them
 templates/         base + app/auth layouts, shared form partial
 ```
@@ -107,9 +118,21 @@ Admins set it up under **Settings → Email & SMS**:
 - Runs and every step are logged (Automations → workflow → Log). "Run it now" tests a workflow on one contact. Four recipes get you started.
 - Engine: `activities.services.record()` → `automation.events.dispatch()` (only queues work if a matching live workflow exists) → Celery `process_activity`. Beat resumes waits every minute and scans time-based triggers every 15 minutes.
 
+## Lead & communication automation (Phase 5)
+
+- **Web forms** (Marketing → Web forms): pick fields (incl. custom fields), hosted link + iframe embed that auto-resizes, UTM capture, consent checkbox, default owner/tags. New people become contacts; known emails/phones only get blanks filled. Spam: hidden honeypot, signed render-time check (< 2 s = bot), 10 submissions / IP / 10 min. Bots get the normal thank-you page.
+- **Lead scoring** (Marketing → Lead scoring): *profile* rules (points while conditions match, recalculated) + *behaviour* rules (points per event, optional cap). Grades cold / warm / hot with your thresholds; a grade change is a timeline event and a workflow trigger. Score shows on contacts (sortable column, filter, contact card with recent score changes).
+- **Segments**: saved, always-current contact lists using the same conditions as workflows, evaluated in SQL. Filter the contacts list by segment; use them for broadcasts, bulk sequence enrollment and the "In segment" condition.
+- **Sequences**: multi-step email/SMS with delays; enroll from a contact, a whole segment or the "Add to sequence" workflow step. Stops on reply (optional), on unsubscribe, or when exit conditions match. Per-step sent / opened / clicked stats.
+- **Broadcasts**: one email/SMS to a segment, now or scheduled; 200 per minute; skips unsubscribed / no-address contacts; stats per recipient.
+- **Consent**: marketing emails get an unsubscribe link plus `List-Unsubscribe` / one-click headers; marketing SMS can append "Reply STOP to opt out"; inbound STOP / UNSUBSCRIBE / বন্ধ opt out, START opts back in; manual toggles on the contact page.
+- **Quiet hours** (Settings → Email & SMS → Sending rules): workflow sends, sequences and broadcasts wait for the sending window. Messages you write yourself go immediately.
+- **New workflow triggers**: web form submitted, lead grade changes, lead not contacted within N hours (speed to lead), date field such as birthdays/renewals (optionally yearly), deal idle N days. **New steps**: add to / remove from sequence, change lead score. **New conditions**: lead score, grade, unsubscribed (email/SMS), in segment.
+- Background jobs: sequences and broadcasts are processed every minute by Celery beat; scoring runs on each timeline event.
+
 ## Timeline events → automations
 
-Every change to a contact, company or deal goes through `apps.activities.services.record()` (created, updated, stage/owner changed, tag added/removed, note, file, imported, deal moved/won/lost/reopened, task created/completed, email sent/received/opened/clicked, SMS sent/received, message failed, call logged). Phase 4's automation triggers will subscribe there, so new features should log through it rather than writing `Activity` rows directly.
+Every change to a contact, company or deal goes through `apps.activities.services.record()` (created, updated, stage/owner changed, tag added/removed, note, file, imported, deal moved/won/lost/reopened, task created/completed, email sent/received/opened/clicked, SMS sent/received, message failed, call logged, form submitted, lead grade changed, unsubscribed/resubscribed, added to / left sequence). Phase 4's automation triggers will subscribe there, so new features should log through it rather than writing `Activity` rows directly.
 
 ## Multi-tenancy rules (read before adding Phase 1+ models)
 

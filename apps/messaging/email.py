@@ -42,7 +42,7 @@ def _absolute(path):
     return settings.SITE_URL.rstrip("/") + path
 
 
-def text_to_html(message, text, channel_settings):
+def text_to_html(message, text, channel_settings, untracked=()):
     """Escapes the plain-text body, turns URLs into (tracked) links and blank lines into paragraphs."""
     track = channel_settings.track_clicks
 
@@ -52,7 +52,7 @@ def text_to_html(message, text, channel_settings):
             url = match.group(0).rstrip(".,;:!?")
             out.append(escape(chunk[last:match.start()]))
             href = url
-            if track:
+            if track and url not in untracked:
                 link = TrackedLink.objects.create(message=message, url=url)
                 href = _absolute(reverse("messaging:track_click", args=[link.token]))
             out.append(f'<a href="{escape(href)}">{escape(url)}</a>')
@@ -74,11 +74,20 @@ def send_email(message):
     body = message.body_text
     if channel_settings.email_signature:
         body = f"{body}\n\n--\n{channel_settings.email_signature}"
-    message.body_html = text_to_html(message, body, channel_settings)
+    unsubscribe = None
+    if message.is_marketing and message.contact_id:
+        from .consent import unsubscribe_url
+
+        unsubscribe = unsubscribe_url(message.contact)
+        body = f"{body}\n\nDon't want these emails? Unsubscribe: {unsubscribe}"
+    message.body_html = text_to_html(message, body, channel_settings, untracked=(unsubscribe,) if unsubscribe else ())
     name, address = sender(channel_settings)
     message.from_address = address
 
     headers = {"Message-ID": message.message_id}
+    if unsubscribe:
+        headers["List-Unsubscribe"] = f"<{unsubscribe}>"
+        headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
     if message.in_reply_to:
         headers["In-Reply-To"] = message.in_reply_to
         headers["References"] = message.in_reply_to

@@ -3,7 +3,7 @@
 import logging
 from datetime import timedelta
 
-from django.db.models import Exists, F, OuterRef
+from django.db.models import Exists, F, OuterRef, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -41,6 +41,10 @@ def trigger_config_matches(workflow, activity):
         return activity.deal is not None and str(activity.deal.pipeline_id) == str(cfg["pipeline"])
     if kind == "deal_stage_changed" and cfg.get("stage"):
         return str(data.get("to")) == str(cfg["stage"])
+    if kind == "form_submitted" and cfg.get("form"):
+        return str(data.get("form")) == str(cfg["form"])
+    if kind == "lead_grade_changed" and cfg.get("to_grade"):
+        return data.get("to") == cfg["to_grade"]
     return True
 
 
@@ -127,6 +131,11 @@ def execute(run):
                 _finish(run, RunStatus.FAILED, f"{type(exc).__name__}: {exc}")
                 return run
 
+            if outcome.status == "defer":  # e.g. quiet hours: retry this same step later
+                _log(run, position, action.action_type, StepStatus.WAITING, outcome.message)
+                run.status, run.resume_at = RunStatus.WAITING, outcome.resume_at
+                run.save(update_fields=["status", "resume_at", "updated_at"])
+                return run
             run.current_step += 1
             if outcome.status == "wait":
                 _log(run, position, action.action_type, StepStatus.WAITING, outcome.message)
@@ -197,6 +206,70 @@ def scan_scheduled(now=None):
                  .exclude(Exists(ran_today)).select_related("contact", "stage", "pipeline", "org")[:SCAN_BATCH])
         for deal in deals:
             if enroll(workflow, contact=deal.contact, deal=deal, summary=f"Expected to close in {days} day(s)"):
+                enrolled += 1
+
+    enrolled += _scan_not_contacted(now) + _scan_date_fields(now, today) + _scan_idle_deals(now)
+    return enrolled
+
+
+def _active(trigger_type):
+    return Workflow.objects.filter(is_active=True, trigger_type=trigger_type, org__is_active=True).select_related("org", "created_by")
+
+
+def _scan_not_contacted(now):
+    """Speed to lead: new contacts with no outgoing email/SMS and no logged call after N hours."""
+    from apps.messaging.models import CallLog, Direction, Message
+
+    enrolled = 0
+    for workflow in _active("lead_not_contacted"):
+        hours = float((workflow.trigger_config or {}).get("hours", 2))
+        reached = Q(Exists(Message.objects.filter(contact=OuterRef("pk"), direction=Direction.OUTBOUND))) | Q(
+            Exists(CallLog.objects.filter(contact=OuterRef("pk"))))
+        contacts = (Contact.objects.filter(org=workflow.org, created_at__lte=now - timedelta(hours=hours),
+                                           created_at__gte=now - timedelta(days=30))
+                    .exclude(reached).exclude(Exists(WorkflowRun.objects.filter(workflow=workflow, contact=OuterRef("pk"))))
+                    .select_related("company", "owner")[:SCAN_BATCH])
+        for contact in contacts:
+            if enroll(workflow, contact=contact, summary=f"Not contacted within {hours:g} hours", force=True):
+                enrolled += 1
+    return enrolled
+
+
+def _scan_date_fields(now, today):
+    """Birthdays, renewals…: a contact date custom field equal to today + N days (optionally every year)."""
+    from datetime import date
+
+    enrolled = 0
+    for workflow in _active("date_field"):
+        cfg = workflow.trigger_config or {}
+        key, target = cfg.get("field"), today + timedelta(days=int(cfg.get("days_before", 0)))
+        if not key:
+            continue
+        ran_today = WorkflowRun.objects.filter(workflow=workflow, contact=OuterRef("pk"), created_at__date=today)
+        candidates = (Contact.objects.filter(org=workflow.org, custom_fields__has_key=key).exclude(Exists(ran_today))
+                      .select_related("company", "owner"))
+        for contact in candidates.iterator(chunk_size=500):
+            try:
+                value = date.fromisoformat(str(contact.custom_fields.get(key, ""))[:10])
+            except ValueError:
+                continue
+            hit = (value.month, value.day) == (target.month, target.day) if cfg.get("yearly", True) else value == target
+            if hit and enroll(workflow, contact=contact, summary=f"{key} on {value:%d %b}", force=True):
+                enrolled += 1
+    return enrolled
+
+
+def _scan_idle_deals(now):
+    enrolled = 0
+    for workflow in _active("deal_idle"):
+        days = int((workflow.trigger_config or {}).get("days", 7))
+        later_run = WorkflowRun.objects.filter(workflow=workflow, deal=OuterRef("pk"), created_at__gte=OuterRef("last_touch"))
+        deals = (Deal.objects.filter(org=workflow.org, status=DealStatus.OPEN)
+                 .annotate(last_touch=Coalesce("last_activity_at", "stage_changed_at"))
+                 .filter(last_touch__lt=now - timedelta(days=days)).exclude(Exists(later_run))
+                 .select_related("contact", "stage", "pipeline", "org")[:SCAN_BATCH])
+        for deal in deals:
+            if enroll(workflow, contact=deal.contact, deal=deal, summary=f"No activity for {days}+ days", force=workflow.allow_reenroll):
                 enrolled += 1
     return enrolled
 

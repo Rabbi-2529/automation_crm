@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% block title %}Web forms{% endblock %}
+{% block page_title %}Web forms{% endblock %}
+{% block page_actions %}<a href="{% url 'leads:form_create' %}" class="btn btn-primary">+ New form</a>{% endblock %}
+{% block content %}
+<div class="card overflow-x-auto p-0">
+  <table class="table" data-datatable data-empty="No forms yet. Create one and put it on thingbd.com or a landing page.">
+    <thead class="bg-slate-50"><tr><th>Form</th><th>Fields</th><th>Submissions</th><th>Status</th><th data-orderable="false"></th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for f in webforms %}
+      <tr>
+        <td><a href="{% url 'leads:form_detail' f.pk %}" class="font-medium text-slate-900 hover:text-violet-700">{{ f.name }}</a><span class="block text-xs text-slate-500">{{ f.title }}</span></td>
+        <td>{{ f.fields|length }}</td>
+        <td>{{ f.submission_count }}</td>
+        <td>{% if f.is_active %}<span class="badge bg-emerald-100 text-emerald-700">● Live</span>{% else %}<span class="badge bg-slate-100 text-slate-500">Closed</span>{% endif %}</td>
+        <td class="text-right"><a href="{% url 'leads:form_edit' f.pk %}" class="text-sm text-violet-600 hover:underline">Edit</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

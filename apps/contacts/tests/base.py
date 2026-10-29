@@ -16,6 +16,10 @@ class CrmTestCase(TestCase):
         self.agent = make_member(self.org, Role.AGENT)
         self.other_org = make_org("Rival")
         self.outsider = make_member(self.other_org, Role.ADMIN)
+        # Automated sends honour quiet hours; switch them off so tests don't depend on the time of day.
+        from apps.messaging.models import ChannelSettings
+
+        ChannelSettings.objects.update_or_create(org=self.org, defaults={"quiet_hours_enabled": False})
 
     def login(self, membership):
         self.client.force_login(membership.user)

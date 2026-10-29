@@ -1,0 +1,55 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if sequence.pk %}Edit sequence{% else %}New sequence{% endif %}{% endblock %}
+{% block page_title %}<a href="{% url 'campaigns:sequence_list' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Sequences /</a> {% if sequence.pk %}Edit {{ sequence.name }}{% else %}New sequence{% endif %}{% endblock %}
+{% block content %}
+{% include "partials/errors.html" %}
+<form id="builder-form" method="post" class="form-stack grid gap-6 lg:grid-cols-3">{% csrf_token %}
+  <div class="space-y-6 lg:col-span-2">
+    <section class="card space-y-4">{% include "partials/form.html" %}</section>
+
+    <section class="space-y-4">
+      <h2 class="font-semibold">Steps</h2>
+      {{ formset.management_form }}
+      {% for e in formset.non_form_errors %}<p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">{{ e }}</p>{% endfor %}
+      {% for f in formset %}
+      <div class="card space-y-3">
+        {{ f.id }}{{ f.position }}
+        <div class="flex items-center justify-between">
+          <p class="font-medium"><span class="mr-2 inline-grid h-6 w-6 place-items-center rounded-full bg-violet-600 text-xs text-white">{{ forloop.counter }}</span>{% if f.instance.pk %}Step {{ forloop.counter }}{% else %}New step <span class="text-sm font-normal text-slate-400">(leave empty to skip)</span>{% endif %}</p>
+          {% if f.instance.pk %}<label class="flex items-center gap-2 text-sm text-red-600">{{ f.DELETE }} Remove</label>{% endif %}
+        </div>
+        {% for e in f.non_field_errors %}<p class="text-sm text-red-600">{{ e }}</p>{% endfor %}
+        <div class="grid gap-3 sm:grid-cols-4">
+          <div><label class="text-sm font-medium text-slate-700">Wait (days)</label>{{ f.delay_days }}</div>
+          <div><label class="text-sm font-medium text-slate-700">+ hours</label>{{ f.delay_hours }}</div>
+          <div><label class="text-sm font-medium text-slate-700">Channel</label>{{ f.channel }}</div>
+          <div><label class="text-sm font-medium text-slate-700">Template</label>{{ f.template }}</div>
+        </div>
+        <div><label class="text-sm font-medium text-slate-700">Subject <span class="font-normal text-slate-400">(email)</span></label>{{ f.subject }}{% for e in f.subject.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
+        <div><label class="text-sm font-medium text-slate-700">Message</label>{{ f.body }}</div>
+      </div>
+      {% endfor %}
+      <p class="text-xs text-slate-500">The first step's wait counts from when someone is added; each later wait counts from the step before. Save to get another empty step.</p>
+    </section>
+
+    <section class="card">
+      <h2 class="font-semibold">Stop early when… <span class="text-sm font-normal text-slate-400">(optional)</span></h2>
+      <p class="mb-2 text-sm text-slate-500">Checked before every step, e.g. lifecycle stage is Customer.</p>
+      {% include "automation/partials/conditions_builder.html" %}
+    </section>
+    <div class="flex justify-between">
+      <a href="{% if sequence.pk %}{% url 'campaigns:sequence_detail' sequence.pk %}{% else %}{% url 'campaigns:sequence_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+      <button class="btn btn-primary">Save sequence</button>
+    </div>
+  </div>
+  <aside class="card h-fit text-sm text-slate-600">
+    <h2 class="font-semibold text-slate-900">Good to know</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+      <li>Emails include an unsubscribe link; SMS can include “Reply STOP”.</li>
+      <li>Unsubscribed contacts and replies stop the sequence automatically.</li>
+      <li>Steps wait for your sending window (Settings → Email &amp; SMS → Sending rules).</li>
+      <li>Variables like <code>{% templatetag openvariable %} contact.first_name {% templatetag closevariable %}</code> work in subject and message.</li>
+    </ul>
+  </aside>
+</form>
+{% endblock %}

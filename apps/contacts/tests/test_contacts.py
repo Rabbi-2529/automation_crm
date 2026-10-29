@@ -148,13 +148,13 @@ class ContactListTests(CrmTestCase):
     def test_datatables_protocol(self):
         payload = self.table(stage="lead")
         self.assertEqual((payload["draw"], payload["recordsTotal"], payload["recordsFiltered"]), (3, 2, 1))
-        self.assertEqual(len(payload["data"][0]), 8)
+        self.assertEqual(len(payload["data"][0]), 9)
         self.assertIn('name="ids"', payload["data"][0][0])
         # Ordering by column 1 desc, and paging.
         self.assertEqual(self.names(**{"order[0][dir]": "desc"}), ["Rahim", "Karim"])
         self.assertEqual(self.names(length=1, start=1), ["Rahim"])
         # Non-sortable column (tags) or junk input falls back to default ordering instead of erroring.
-        self.assertEqual(len(self.table(**{"order[0][column]": 5})["data"]), 2)
+        self.assertEqual(len(self.table(**{"order[0][column]": 6})["data"]), 2)
         self.assertEqual(self.client.get(reverse("contacts:contact_table"), {"start": "x", "length": "999"}).status_code, 200)
 
     def test_cells_are_escaped(self):

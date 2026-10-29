@@ -23,6 +23,8 @@ def resolve(key, contact=None, deal=None):
         return obj.company.name if obj.company_id else ""
     if name in ("owner", "stage"):
         return str(getattr(obj, f"{name}_id") or "")
+    if name in ("email_opt_out", "sms_opt_out"):
+        return "yes" if getattr(obj, name) else "no"
     if name == "days_since_created":
         return _days_since(obj.created_at)
     if name == "days_since_activity":
@@ -39,6 +41,13 @@ def _number(value):
 
 def check(rule, contact=None, deal=None):
     op, expected = rule["op"], rule.get("value", "")
+    if rule["field"] == "contact.segment":
+        from apps.campaigns.models import Segment
+        from apps.campaigns.segments import contains
+
+        segment = Segment.objects.filter(pk=expected or 0).first()
+        inside = bool(contact and segment and segment.org_id == contact.org_id and contains(segment, contact))
+        return inside if op == "is" else not inside
     actual = resolve(rule["field"], contact, deal)
 
     if op == "has":

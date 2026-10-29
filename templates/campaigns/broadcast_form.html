@@ -1,0 +1,22 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if broadcast.pk %}Edit broadcast{% else %}New broadcast{% endif %}{% endblock %}
+{% block page_title %}<a href="{% url 'campaigns:broadcast_list' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Broadcasts /</a> {% if broadcast.pk %}Edit {{ broadcast.name }}{% else %}New broadcast{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="grid gap-6 lg:grid-cols-3">{% csrf_token %}
+  <div class="card space-y-6 lg:col-span-2">
+    {% include "partials/form.html" %}
+    <div class="flex justify-between">
+      <a href="{% url 'campaigns:broadcast_list' %}" class="btn btn-secondary">Cancel</a>
+      <button class="btn btn-primary">Save and review</button>
+    </div>
+  </div>
+  <aside class="card h-fit text-sm text-slate-600">
+    <h2 class="font-semibold text-slate-900">Before you send</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+      <li>You'll see how many contacts it reaches on the next screen.</li>
+      <li>Unsubscribed contacts and contacts without an address are skipped.</li>
+      <li>Sending pauses outside your sending window and goes out in batches of 200 a minute.</li>
+    </ul>
+  </aside>
+</form>
+{% endblock %}

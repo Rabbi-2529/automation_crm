@@ -22,7 +22,16 @@ from apps.pipeline.models import Deal
 
 from . import email as email_backend
 from . import services
-from .forms import CallLogForm, ComposeForm, EmailSettingsForm, ImapSettingsForm, ReplyForm, SmsSettingsForm, TemplateForm
+from .forms import (
+    CallLogForm,
+    ComposeForm,
+    EmailSettingsForm,
+    ImapSettingsForm,
+    ReplyForm,
+    SendingRulesForm,
+    SmsSettingsForm,
+    TemplateForm,
+)
 from .inbound import fetch_inbox, twilio_signature_valid
 from .models import Channel, ChannelSettings, Conversation, Message, MessageTemplate, SmsProvider, TrackedLink
 from .rendering import VARIABLES, build_context, render as render_variables
@@ -247,7 +256,7 @@ class TemplateDeleteView(ManagerRequiredMixin, OrgScopedQuerysetMixin, DeleteVie
 
 # --- Channel settings ------------------------------------------------------------------------------------------------
 
-SETTINGS_FORMS = {"email": EmailSettingsForm, "imap": ImapSettingsForm, "sms": SmsSettingsForm}
+SETTINGS_FORMS = {"email": EmailSettingsForm, "imap": ImapSettingsForm, "sms": SmsSettingsForm, "rules": SendingRulesForm}
 
 
 class ChannelSettingsView(AdminRequiredMixin, View):
@@ -344,3 +353,31 @@ class TwilioSmsWebhook(View):
         services.ingest_sms(channel_settings.org, params.get("From", ""), params.get("Body", ""), params.get("MessageSid", ""))
         return HttpResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', content_type="text/xml")
 
+
+
+@method_decorator(csrf_exempt, name="dispatch")  # signed token in the URL is the credential; mail clients POST one-click
+class UnsubscribeView(View):
+    template_name = "messaging/unsubscribe.html"
+
+    def get(self, request, token):
+        from .consent import contact_from_token
+
+        contact = contact_from_token(token)
+        if contact is None:
+            raise Http404
+        return render(request, self.template_name, {"contact": contact, "org": contact.org, "done": contact.email_opt_out})
+
+    def post(self, request, token):
+        from .consent import contact_from_token, opt_in, opt_out
+
+        contact = contact_from_token(token)
+        if contact is None:
+            raise Http404
+        if request.POST.get("action") == "resubscribe":
+            opt_in(contact, Channel.EMAIL, "unsubscribe page")
+        else:
+            one_click = request.POST.get("List-Unsubscribe") == "One-Click"
+            opt_out(contact, Channel.EMAIL, "one-click header" if one_click else "unsubscribe link")
+        contact.refresh_from_db()
+        return render(request, self.template_name, {"contact": contact, "org": contact.org, "done": contact.email_opt_out,
+                                                    "changed": True})

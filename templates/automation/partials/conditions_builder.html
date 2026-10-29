@@ -1,0 +1,7 @@
+{% load static %}
+{# Conditions-only editor (segments, scoring rules, sequence exits). The surrounding <form> must have id="builder-form". #}
+{{ schema|json_script:"builder-schema" }}
+{{ definition|json_script:"builder-definition" }}
+<input type="hidden" name="conditions_json">
+<div id="conditions-root"></div>
+<script src="{% static 'js/workflow-builder.js' %}" defer></script>

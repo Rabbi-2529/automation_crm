@@ -63,6 +63,9 @@
       case "number":
         input = h("input", { id, type: "number", min: 0, step: "any", value: value ?? "", oninput: e => set(e.target.value) });
         break;
+      case "integer":
+        input = h("input", { id, type: "number", step: 1, value: value ?? "", oninput: e => set(e.target.value) });
+        break;
       case "checkbox":
         input = h("input", { id, type: "checkbox", checked: !!value, onchange: e => set(e.target.checked) });
         return h("label", { class: "flex items-center gap-2 text-sm font-medium text-slate-700" }, input, spec.label);
@@ -83,6 +86,7 @@
         input.addEventListener("change", () => set([...input.selectedOptions].map(o => o.value)));
         break;
       case "tag": case "lifecycle": case "pipeline": case "stage": case "email_template": case "sms_template":
+      case "webform": case "sequence": case "date_field":
         input = options(h("select", { id }), schema.choices[spec.type] || [], value, spec.required ? `Pick a ${spec.label.toLowerCase()}` : "—");
         break;
       default:
@@ -99,7 +103,7 @@
   // ---------- Conditions ----------
   function valueWidget(rule, field) {
     const vt = field.valueType;
-    if (["lifecycle", "source", "deal_status", "user", "tag", "stage"].includes(vt)) {
+    if (["lifecycle", "source", "deal_status", "user", "tag", "stage", "grade", "yesno", "segment"].includes(vt)) {
       const select = options(h("select", { "aria-label": "Value" }), schema.choices[vt] || [], rule.value, "Pick…");
       select.addEventListener("change", () => { rule.value = select.value; });
       return select;
@@ -217,6 +221,7 @@
                        "actions-root": renderActions };
     for (const [id, render] of Object.entries(sections)) {
       const root = document.getElementById(id);
+      if (!root) continue;  // conditions-only pages (segments, scoring rules, sequence exits) have just one section
       if (window.jQuery) jQuery(root).find("select.select2-hidden-accessible").select2("destroy");
       root.replaceChildren();
       render(root);
@@ -226,6 +231,10 @@
 
   document.getElementById("builder-form").addEventListener("submit", () => {
     const form = document.getElementById("builder-form");
+    if (form.elements.conditions_json) {  // conditions-only mode
+      form.elements.conditions_json.value = JSON.stringify(state.conditions);
+      return;
+    }
     state.name = form.elements.name.value;
     state.description = form.elements.description.value;
     state.is_active = form.elements.is_active.checked;

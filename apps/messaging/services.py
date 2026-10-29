@@ -34,10 +34,16 @@ def _excerpt(text, limit=120):
 
 
 @transaction.atomic
-def compose(*, org, user, channel, to_address, body, subject="", contact=None, deal=None, template=None, reply_to=None):
-    """Creates the outbound Message (variables rendered) and queues delivery after commit."""
+def compose(*, org, user, channel, to_address, body, subject="", contact=None, deal=None, template=None, reply_to=None,
+            marketing=False):
+    """Creates the outbound Message (variables rendered) and queues delivery after commit.
+
+    marketing=True (sequences, broadcasts) adds an unsubscribe link to email and the STOP footer to SMS.
+    """
     values = build_context(org=org, user=user, contact=contact, deal=deal)
     body, subject = render(body, values), render(subject, values)
+    if marketing and channel == Channel.SMS and ChannelSettings.for_org(org).sms_opt_out_footer:
+        body = f"{body}\nReply STOP to opt out"
     if reply_to is not None:
         conversation = reply_to.conversation
         contact = contact or conversation.contact
@@ -49,7 +55,7 @@ def compose(*, org, user, channel, to_address, body, subject="", contact=None, d
     message = Message.objects.create(
         org=org, conversation=conversation, channel=channel, direction=Direction.OUTBOUND, status=MessageStatus.QUEUED,
         contact=contact, deal=deal, template=template, sent_by=user, to_address=to_address, subject=subject[:255],
-        body_text=body,
+        body_text=body, is_marketing=marketing,
         message_id=email_backend.new_message_id(ChannelSettings.for_org(org)) if channel == Channel.EMAIL else "",
         in_reply_to=(reply_to.message_id if reply_to is not None else ""),
     )
@@ -184,6 +190,13 @@ def ingest_sms(org, from_number, body, provider_ref=""):
     conversation.save()
     if contact:
         record(org=org, kind=ActivityKind.SMS_RECEIVED, contact=contact, message=message, summary=f"SMS received: {_excerpt(body, 80)}")
+        from .consent import opt_in, opt_out, sms_keyword
+
+        keyword = sms_keyword(body)
+        if keyword == "stop":
+            opt_out(contact, Channel.SMS, "replied STOP")
+        elif keyword == "start":
+            opt_in(contact, Channel.SMS, "replied START")
     return message
 
 

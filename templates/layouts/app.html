@@ -28,6 +28,19 @@
       {% url "automation:workflow_list" as automations_url %}
       {% include "partials/nav_link.html" with href=automations_url label="Automations" match="workflow" %}
       {% include "partials/nav_link.html" with label="Reports" soon="Phase 6" %}
+      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">Marketing</p>
+      {% url "campaigns:segment_list" as segments_url %}
+      {% include "partials/nav_link.html" with href=segments_url label="Segments" match="segment" %}
+      {% url "campaigns:sequence_list" as sequences_url %}
+      {% include "partials/nav_link.html" with href=sequences_url label="Sequences" match="sequence" %}
+      {% url "campaigns:broadcast_list" as broadcasts_url %}
+      {% include "partials/nav_link.html" with href=broadcasts_url label="Broadcasts" match="broadcast" %}
+      {% if current_membership.is_manager %}
+        {% url "leads:form_list" as forms_url %}
+        {% include "partials/nav_link.html" with href=forms_url label="Web forms" match="form_" %}
+        {% url "leads:scoring" as scoring_url %}
+        {% include "partials/nav_link.html" with href=scoring_url label="Lead scoring" match="scoring" %}
+      {% endif %}
       <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">Workspace</p>
       {% url "orgs:teams" as teams_url %}
       {% include "partials/nav_link.html" with href=teams_url label="Teams" match="team" %}

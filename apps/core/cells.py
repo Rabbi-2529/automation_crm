@@ -37,6 +37,14 @@ def money(currency, value):
     return format_html('<span class="whitespace-nowrap font-medium">{} {}</span>', currency, intcomma(int(value or 0)))
 
 
+GRADE_COLORS = {"hot": "red", "warm": "amber", "cold": "slate"}
+
+
+def score(contact):
+    return format_html('<span class="badge bg-{}-100 text-{}-700" title="{} lead">{}</span>', GRADE_COLORS[contact.grade],
+                       GRADE_COLORS[contact.grade], contact.get_grade_display(), contact.score)
+
+
 def checkbox(obj, label):
     return format_html('<input type="checkbox" name="ids" value="{}" form="bulk-form" aria-label="Select {}" class="h-4 w-4">',
                        obj.pk, label)

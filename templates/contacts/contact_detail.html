@@ -26,6 +26,8 @@
         <div class="flex justify-between gap-4"><dt class="text-slate-500">Email</dt><dd>{% if contact.email %}<a href="mailto:{{ contact.email }}" class="text-violet-600 hover:underline">{{ contact.email }}</a>{% else %}—{% endif %}</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-slate-500">Phone</dt><dd>{% if contact.phone %}<a href="tel:{{ contact.phone }}" class="hover:underline">{{ contact.phone }}</a>{% else %}—{% endif %}</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-slate-500">Stage</dt><dd>{% include "contacts/partials/stage_badge.html" with stage=contact.lifecycle_stage label=contact.get_lifecycle_stage_display %}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Lead score</dt><dd>
+          <span class="badge {% if contact.grade == 'hot' %}bg-red-100 text-red-700{% elif contact.grade == 'warm' %}bg-amber-100 text-amber-700{% else %}bg-slate-100 text-slate-600{% endif %}">{{ contact.score }} · {{ contact.get_grade_display }}</span></dd></div>
         <div class="flex justify-between gap-4"><dt class="text-slate-500">Owner</dt><dd>{{ contact.owner.display_name|default:"Unassigned" }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-slate-500">Source</dt><dd>{{ contact.get_source_display }}</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-slate-500">Created</dt><dd>{{ contact.created_at|date:"d M Y" }}{% if contact.created_by %} by {{ contact.created_by.display_name }}{% endif %}</dd></div>
@@ -48,6 +50,46 @@
 
     {% include "pipeline/partials/deals_card.html" with target="contact" obj=contact %}
     {% include "tasks/partials/task_panel.html" with target="contact" obj=contact %}
+    <div class="card text-sm">
+      <h2 class="font-semibold">Sequences</h2>
+      <ul class="mt-2 divide-y divide-slate-100">
+        {% for e in enrollments %}
+        <li class="flex items-center justify-between gap-2 py-2">
+          <a href="{% url 'campaigns:sequence_detail' e.sequence_id %}" class="min-w-0 truncate hover:text-violet-700">{{ e.sequence.name }}</a>
+          <span class="flex shrink-0 items-center gap-2">
+            <span class="badge {% if e.status == 'active' %}bg-sky-100 text-sky-700{% elif e.status == 'completed' %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-600{% endif %}">{{ e.get_status_display }}</span>
+            {% if e.status == "active" %}<form method="post" action="{% url 'campaigns:contact_enroll' contact.pk %}">{% csrf_token %}<input type="hidden" name="remove" value="{{ e.sequence_id }}"><button class="text-xs text-red-600 hover:underline">remove</button></form>{% endif %}
+          </span>
+        </li>
+        {% empty %}<li class="py-2 text-slate-500">Not in any sequence.</li>{% endfor %}
+      </ul>
+      <form method="post" action="{% url 'campaigns:contact_enroll' contact.pk %}" class="form-stack mt-3 flex gap-2">{% csrf_token %}
+        <div class="min-w-0 flex-1">{{ enroll_form.sequence }}</div><button class="btn btn-secondary py-1.5">Add</button>
+      </form>
+    </div>
+
+    <div class="card text-sm">
+      <h2 class="font-semibold">Communication preferences</h2>
+      <ul class="mt-2 space-y-2">
+        <li class="flex items-center justify-between">Email
+          <form method="post" action="{% url 'contacts:contact_consent' contact.pk %}" class="flex items-center gap-2">{% csrf_token %}
+            <input type="hidden" name="channel" value="email"><input type="hidden" name="opt" value="{% if contact.email_opt_out %}in{% else %}out{% endif %}">
+            {% if contact.email_opt_out %}<span class="badge bg-red-100 text-red-700">Unsubscribed</span><button class="text-xs text-violet-600 hover:underline">resubscribe</button>
+            {% else %}<span class="badge bg-emerald-100 text-emerald-700">Subscribed</span><button class="text-xs text-slate-500 hover:underline">opt out</button>{% endif %}
+          </form></li>
+        <li class="flex items-center justify-between">SMS
+          <form method="post" action="{% url 'contacts:contact_consent' contact.pk %}" class="flex items-center gap-2">{% csrf_token %}
+            <input type="hidden" name="channel" value="sms"><input type="hidden" name="opt" value="{% if contact.sms_opt_out %}in{% else %}out{% endif %}">
+            {% if contact.sms_opt_out %}<span class="badge bg-red-100 text-red-700">Unsubscribed</span><button class="text-xs text-violet-600 hover:underline">resubscribe</button>
+            {% else %}<span class="badge bg-emerald-100 text-emerald-700">Subscribed</span><button class="text-xs text-slate-500 hover:underline">opt out</button>{% endif %}
+          </form></li>
+      </ul>
+      {% if score_logs %}
+      <h3 class="mt-4 text-xs font-semibold uppercase tracking-wider text-slate-400">Recent score changes</h3>
+      <ul class="mt-1 space-y-1">{% for log in score_logs %}<li class="flex justify-between gap-2"><span class="truncate text-slate-600">{{ log.reason }}</span><span class="shrink-0 font-medium {% if log.points < 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ log.points|stringformat:"+d" }}</span></li>{% endfor %}</ul>
+      {% endif %}
+    </div>
+
     {% if workflow_runs %}
     <div class="card">
       <h2 class="font-semibold">Automations</h2>

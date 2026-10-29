@@ -28,7 +28,8 @@ class Describer:
     def field_value(self, field, value):
         if value in (None, "", []):
             return None
-        if field.type in ("user", "tag", "stage", "pipeline", "lifecycle", "email_template", "sms_template"):
+        if field.type in ("user", "tag", "stage", "pipeline", "lifecycle", "email_template", "sms_template", "webform", "sequence",
+                          "date_field"):
             return self.name(field.type, value)
         if field.type == "users":
             return ", ".join(self.name("user", v) for v in value)
@@ -55,7 +56,7 @@ class Describer:
         for rule in rules:
             label, value_type = self.fields.get(rule["field"], (rule["field"], "text"))
             value = rule.get("value", "")
-            if value_type in ("user", "tag", "stage", "lifecycle", "source", "deal_status"):
+            if value_type in ("user", "tag", "stage", "lifecycle", "source", "deal_status", "grade", "yesno", "segment"):
                 value = self.name(value_type, value)
             parts.append(f"{label} {OP_WORDS.get(rule['op'], rule['op'])}" + (f" “{value}”" if value != "" else ""))
         joiner = " or " if (conditions or {}).get("match") == "any" else " and "

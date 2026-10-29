@@ -82,6 +82,20 @@ TRIGGERS = {
     "email_received": Trigger("Email received from contact", "Activity", "contact"),
     "sms_received": Trigger("SMS received from contact", "Activity", "contact"),
     "call_logged": Trigger("Call is logged", "Activity", "contact"),
+    "form_submitted": Trigger("Web form is submitted", "Leads", "contact", [
+        Field("form", "Form", "webform", required=False, help="Leave empty for any form.")]),
+    "lead_grade_changed": Trigger("Lead grade changes", "Leads", "contact", [
+        Field("to_grade", "Becomes", "select", required=False, options=[("hot", "Hot"), ("warm", "Warm"), ("cold", "Cold")])]),
+    "lead_not_contacted": Trigger("New lead not contacted in time (speed to lead)", "Leads", "contact", [
+        Field("hours", "Hours without an email, SMS or call", "number", default=2)], scheduled=True,
+        help="Checked every 15 minutes for contacts created in the last 30 days."),
+    "date_field": Trigger("Date field comes round (birthday, renewal…)", "Contacts", "contact", [
+        Field("field", "Date field", "date_field"),
+        Field("days_before", "Days before (0 = on the day)", "number", default=0),
+        Field("yearly", "Every year (birthdays, anniversaries)", "checkbox", required=False, default=True),
+    ], scheduled=True),
+    "deal_idle": Trigger("Deal has no activity for a while", "Deals", "deal", [
+        Field("days", "Days without activity", "number", default=7)], scheduled=True),
     "webhook": Trigger("Incoming webhook", "Integrations", "contact",
                        help="POST JSON with at least an email or phone to the URL shown after saving. The contact is found or created."),
 }
@@ -132,6 +146,11 @@ ACTIONS = {
     "move_deal": Action("Move deal to stage", "Deals", [Field("stage", "Stage", "stage")], needs="deal"),
     "webhook": Action("Send webhook", "Integrations", [Field("url", "URL", "url")], needs="any",
                       help="POSTs JSON about the contact/deal, signed with X-ThingBD-Signature (HMAC-SHA256)."),
+    "enroll_sequence": Action("Add to sequence", "Campaigns", [Field("sequence", "Sequence", "sequence")]),
+    "remove_sequence": Action("Remove from sequence", "Campaigns", [Field("sequence", "Sequence", "sequence")]),
+    "adjust_score": Action("Change lead score", "Leads", [
+        Field("points", "Points (use a minus for fewer)", "integer", default=10),
+        Field("reason", "Reason", "text", required=False)]),
     "wait": Action("Wait", "Flow", [
         Field("amount", "Wait", "number", default=1),
         Field("unit", "Unit", "select", options=TIME_UNITS, default="days"),
@@ -167,6 +186,11 @@ def condition_fields(org):
         ("contact.tags", "Contact · Tags", "tags", "tag"),
         ("contact.days_since_created", "Contact · Days since created", "number", "number"),
         ("contact.days_since_activity", "Contact · Days since last activity", "number", "number"),
+        ("contact.score", "Contact · Lead score", "number", "number"),
+        ("contact.grade", "Contact · Lead grade", "choice", "grade"),
+        ("contact.email_opt_out", "Contact · Unsubscribed from email", "choice", "yesno"),
+        ("contact.sms_opt_out", "Contact · Unsubscribed from SMS", "choice", "yesno"),
+        ("contact.segment", "Contact · In segment", "choice", "segment"),
         ("deal.title", "Deal · Title", "text", "text"),
         ("deal.value", "Deal · Value", "number", "number"),
         ("deal.stage", "Deal · Stage", "choice", "stage"),
@@ -190,7 +214,17 @@ def choices(org):
         grouped.setdefault(stage.pipeline.name, []).append({"id": str(stage.pk), "text": stage.name})
     users = User.objects.filter(memberships__org=org, memberships__is_active=True).order_by("first_name", "email")
     templates = MessageTemplate.objects.for_org(org)
+    from apps.campaigns.models import Segment, Sequence
+    from apps.leads.models import WebForm
+
+    date_fields = CustomFieldDefinition.objects.for_org(org).filter(entity=Entity.CONTACT, field_type="date")
     return {
+        "webform": [{"id": str(f.pk), "text": f.name} for f in WebForm.objects.for_org(org)],
+        "sequence": [{"id": str(s.pk), "text": s.name} for s in Sequence.objects.for_org(org)],
+        "segment": [{"id": str(s.pk), "text": s.name} for s in Segment.objects.for_org(org)],
+        "grade": [{"id": "hot", "text": "Hot"}, {"id": "warm", "text": "Warm"}, {"id": "cold", "text": "Cold"}],
+        "yesno": [{"id": "yes", "text": "Yes"}, {"id": "no", "text": "No"}],
+        "date_field": [{"id": d.key, "text": d.label} for d in date_fields],
         "user": [{"id": str(u.pk), "text": u.display_name} for u in users],
         "tag": [{"id": str(t.pk), "text": t.name} for t in Tag.objects.for_org(org)],
         "lifecycle": [{"id": v, "text": t} for v, t in LifecycleStage.choices],
@@ -256,6 +290,22 @@ def validate_config(fields, config, org, where):
             if number < 0:
                 errors.append(f"{where}: {f.label} can't be negative.")
             clean[f.name] = int(number) if number == int(number) else number
+        elif f.type == "integer":
+            try:
+                clean[f.name] = int(float(value))
+            except (TypeError, ValueError):
+                errors.append(f"{where}: {f.label} must be a whole number.")
+        elif f.type in ("webform", "sequence"):
+            from apps.campaigns.models import Sequence
+            from apps.leads.models import WebForm
+
+            if not _ids_in_org({"webform": WebForm, "sequence": Sequence}[f.type], org, [value]):
+                errors.append(f"{where}: {f.label} no longer exists.")
+            clean[f.name] = str(value)
+        elif f.type == "date_field":
+            if not CustomFieldDefinition.objects.for_org(org).filter(entity=Entity.CONTACT, field_type="date", key=value).exists():
+                errors.append(f"{where}: pick a date custom field.")
+            clean[f.name] = str(value)
         elif f.type == "select":
             if str(value) not in {str(v) for v, _ in f.options}:
                 errors.append(f"{where}: pick a valid {f.label.lower()}.")
@@ -319,6 +369,12 @@ def validate_conditions(conditions, org):
                     float(value)
                 except (TypeError, ValueError):
                     errors.append(f"Condition {i}: value must be a number.")
+                    continue
+            if value_type == "segment":
+                from apps.campaigns.models import Segment
+
+                if not _ids_in_org(Segment, org, [value]):
+                    errors.append(f"Condition {i}: that segment no longer exists.")
                     continue
             if value_type in ("tag", "stage") and not _ids_in_org({"tag": Tag, "stage": Stage}[value_type], org, [value]):
                 errors.append(f"Condition {i}: that {value_type} no longer exists.")

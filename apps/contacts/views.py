@@ -46,6 +46,12 @@ from .models import (
 )
 from .tasks import import_contacts
 
+def _segments(org):
+    from apps.campaigns.models import Segment
+
+    return Segment.objects.for_org(org)
+
+
 CONTACT_TRACKED = ["first_name", "last_name", "email", "phone", "job_title", "company", "owner", "lifecycle_stage"]
 COMPANY_TRACKED = ["name", "domain", "industry", "phone", "website", "address", "city", "country", "owner"]
 
@@ -64,6 +70,7 @@ class ContactListView(OrgMemberRequiredMixin, TemplateView):
             tags=Tag.objects.for_org(org),
             owners=org_users(org),
             stages=LifecycleStage.choices,
+            segments=_segments(org),
             filters=self.request.GET,
             total_count=Contact.objects.for_org(org).count(),
             **kwargs,
@@ -123,6 +130,9 @@ class ContactDetailView(OrgMemberRequiredMixin, OrgScopedQuerysetMixin, DetailVi
             activities=timeline_for(contact)[:100],
             deals=contact.deals.select_related("stage", "pipeline").order_by("status", "-created_at"),
             workflow_runs=contact.workflow_runs.select_related("workflow")[:5],
+            score_logs=contact.score_logs.select_related("rule")[:8],
+            enrollments=contact.sequence_enrollments.select_related("sequence").order_by("-created_at")[:6],
+            enroll_form=_enroll_form(self.request.org),
             tasks=contact.tasks.open().select_related("assignee"),
             attachments=contact.attachments.select_related("uploaded_by"),
             note_form=NoteForm(),
@@ -202,6 +212,28 @@ class CompanyLookupView(OrgMemberRequiredMixin, View):
     def get(self, request):
         companies = filter_companies(Company.objects.for_org(request.org), {"q": request.GET.get("q", "")})[:10]
         return JsonResponse({"results": [{"id": c.pk, "text": c.name, "hint": c.domain or c.city} for c in companies]})
+
+
+def _enroll_form(org):
+    from apps.campaigns.forms import EnrollForm
+
+    return EnrollForm(org=org)
+
+
+class ContactConsentView(OrgMemberRequiredMixin, View):
+    """Manually mark a contact as opted out of / back into email or SMS (e.g. they asked by phone)."""
+
+    def post(self, request, pk):
+        from apps.messaging.consent import opt_in, opt_out
+
+        contact = Contact.objects.for_org(request.org).filter(pk=pk).first()
+        channel = request.POST.get("channel")
+        if contact and channel in ("email", "sms"):
+            how = f"set by {request.user.display_name}"
+            changed = opt_out(contact, channel, how) if request.POST.get("opt") == "out" else opt_in(contact, channel, how)
+            if changed:
+                messages.success(request, "Preferences updated.")
+        return redirect("contacts:contact_detail", pk=pk)
 
 
 def contact_url(contact):

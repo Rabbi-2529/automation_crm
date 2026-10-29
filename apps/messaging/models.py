@@ -1,3 +1,4 @@
+import datetime
 import secrets
 import uuid
 
@@ -74,6 +75,12 @@ class ChannelSettings(TimeStampedModel):
     http_api_key = EncryptedTextField(blank=True)
     http_success_text = models.CharField(max_length=100, blank=True, help_text="Optional text the response must contain on success.")
     webhook_token = models.CharField(max_length=64, default=new_token, unique=True, editable=False)
+
+    # Automated sending rules (Phase 5): workflows, sequences and broadcasts respect these; 1:1 messages don't.
+    quiet_hours_enabled = models.BooleanField(default=True, help_text="Hold automated email/SMS outside the sending window.")
+    send_window_start = models.TimeField(default=datetime.time(9, 0))
+    send_window_end = models.TimeField(default=datetime.time(21, 0))
+    sms_opt_out_footer = models.BooleanField(default=True, help_text="Add “Reply STOP to opt out” to marketing SMS.")
 
     class Meta:
         verbose_name_plural = "channel settings"
@@ -169,6 +176,7 @@ class Message(OrgScopedModel):
     provider_ref = models.CharField(max_length=100, blank=True, help_text="SMS provider's message id.")
     error = models.TextField(blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
+    is_marketing = models.BooleanField(default=False, help_text="Sequences/broadcasts: gets an unsubscribe link and List-Unsubscribe header.")
     tracking_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     opened_at = models.DateTimeField(null=True, blank=True)
     open_count = models.PositiveIntegerField(default=0)

@@ -1,0 +1,6 @@
+{% if errors %}
+<div class="mb-6 rounded-xl bg-red-50 p-4 text-sm text-red-800 ring-1 ring-red-200">
+  <p class="font-medium">Please fix these:</p>
+  <ul class="mt-2 list-disc space-y-1 pl-5">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}

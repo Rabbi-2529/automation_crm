@@ -18,7 +18,8 @@ from django.utils import timezone
 from apps.activities.models import ActivityKind, Note
 from apps.activities.services import record, record_changes, snapshot
 from apps.contacts.models import LifecycleStage, Source, Tag
-from apps.messaging.models import Channel, MessageTemplate
+from apps.messaging.consent import can_message, next_send_time
+from apps.messaging.models import Channel, ChannelSettings, MessageTemplate
 from apps.messaging.rendering import build_context, render
 from apps.messaging.services import compose
 from apps.pipeline import services as pipeline_services
@@ -39,7 +40,7 @@ class ActionError(Exception):
 
 @dataclass
 class Outcome:
-    status: str  # done | skipped | wait | stop
+    status: str  # done | skipped | wait | defer (retry this same step later) | stop
     message: str = ""
     resume_at: object = None
 
@@ -121,10 +122,23 @@ def payload_for(run):
 # --- actions -----------------------------------------------------------------------------------------------------------
 
 
+def _automated_send_check(run, channel):
+    """Opt-outs skip the step; quiet hours defer it (the same step runs again when the window opens)."""
+    contact = run.contact
+    address = contact.email if channel == Channel.EMAIL else contact.phone if contact else ""
+    if not contact or not address:
+        return skipped(f"Contact has no {'email address' if channel == Channel.EMAIL else 'phone number'}")
+    if not can_message(contact, channel):
+        return skipped(f"Contact unsubscribed from {Channel(channel).label}")
+    if (later := next_send_time(ChannelSettings.for_org(run.org))) is not None:
+        return Outcome("defer", f"Outside sending hours; sends at {timezone.localtime(later):%d %b %H:%M}", resume_at=later)
+    return None
+
+
 def send_email(run, cfg, action):
     contact = run.contact
-    if not contact or not contact.email:
-        return skipped("Contact has no email address")
+    if (blocked := _automated_send_check(run, Channel.EMAIL)) is not None:
+        return blocked
     template = _template(run.org, cfg.get("template"), Channel.EMAIL)
     subject = cfg.get("subject") or (template.subject if template else "")
     body = cfg.get("body") or (template.body if template else "")
@@ -138,8 +152,8 @@ def send_email(run, cfg, action):
 
 def send_sms(run, cfg, action):
     contact = run.contact
-    if not contact or not contact.phone:
-        return skipped("Contact has no phone number")
+    if (blocked := _automated_send_check(run, Channel.SMS)) is not None:
+        return blocked
     template = _template(run.org, cfg.get("template"), Channel.SMS)
     body = cfg.get("body") or (template.body if template else "")
     if not body:
@@ -301,6 +315,50 @@ def webhook(run, cfg, action):
     return done(f"Webhook delivered (HTTP {response.status_code})")
 
 
+def _sequence(run, cfg):
+    from apps.campaigns.models import Sequence
+
+    sequence = Sequence.objects.for_org(run.org).filter(pk=cfg.get("sequence") or 0).first()
+    if sequence is None:
+        raise ActionError("Sequence no longer exists")
+    return sequence
+
+
+def enroll_sequence(run, cfg, action):
+    from apps.campaigns import engine as campaigns
+
+    if not run.contact:
+        return skipped("No contact")
+    sequence = _sequence(run, cfg)
+    if campaigns.enroll(sequence, run.contact, note=f"Workflow “{run.workflow.name}”") is None:
+        return skipped(f"Already in “{sequence.name}” (or it has no steps)")
+    return done(f"Added to sequence “{sequence.name}”")
+
+
+def remove_sequence(run, cfg, action):
+    from apps.campaigns import engine as campaigns
+
+    if not run.contact:
+        return skipped("No contact")
+    sequence = _sequence(run, cfg)
+    if campaigns.remove(sequence, run.contact, reason=f"workflow “{run.workflow.name}”") is None:
+        return skipped(f"Not active in “{sequence.name}”")
+    return done(f"Removed from sequence “{sequence.name}”")
+
+
+def adjust_score(run, cfg, action):
+    from apps.leads.models import ScoreLog
+    from apps.leads.scoring import recompute
+
+    if not run.contact:
+        return skipped("No contact")
+    points = int(cfg.get("points") or 0)
+    ScoreLog.objects.create(contact=run.contact, rule=None, points=points,
+                            reason=(cfg.get("reason") or f"Workflow “{run.workflow.name}”")[:200])
+    score = recompute(run.contact)
+    return done(f"Score {points:+d} → {score}")
+
+
 def wait(run, cfg, action):
     delta = _delta(cfg.get("amount", 1), cfg.get("unit"))
     return Outcome("wait", f"Waiting {cfg.get('amount')} {cfg.get('unit')}", resume_at=timezone.now() + delta)
@@ -321,6 +379,7 @@ HANDLERS = {
     "assign_owner": assign_owner, "set_lifecycle": set_lifecycle, "update_field": update_field, "add_tag": add_tag,
     "remove_tag": remove_tag, "add_note": add_note, "create_deal": create_deal, "move_deal": move_deal,
     "webhook": webhook, "wait": wait, "condition_gate": condition_gate,
+    "enroll_sequence": enroll_sequence, "remove_sequence": remove_sequence, "adjust_score": adjust_score,
 }
 
 

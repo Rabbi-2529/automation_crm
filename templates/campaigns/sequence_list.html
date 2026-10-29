@@ -1,0 +1,21 @@
+{% extends "layouts/app.html" %}
+{% block title %}Sequences{% endblock %}
+{% block page_title %}Sequences{% endblock %}
+{% block page_actions %}{% if current_membership.is_manager %}<a href="{% url 'campaigns:sequence_create' %}" class="btn btn-primary">+ New sequence</a>{% endif %}{% endblock %}
+{% block content %}
+<div class="card overflow-x-auto p-0">
+  <table class="table" data-datatable data-empty="No sequences yet. Build a follow-up series: email today, SMS in 2 days, email in a week.">
+    <thead class="bg-slate-50"><tr><th>Sequence</th><th>Steps</th><th>Active contacts</th><th>All time</th><th>Status</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for s in sequences %}
+      <tr>
+        <td><a href="{% url 'campaigns:sequence_detail' s.pk %}" class="font-medium text-slate-900 hover:text-violet-700">{{ s.name }}</a>
+          {% if s.description %}<span class="block text-xs text-slate-500">{{ s.description }}</span>{% endif %}</td>
+        <td>{{ s.step_count }}</td><td>{{ s.active_count }}</td><td>{{ s.total_count }}</td>
+        <td>{% if s.is_active %}<span class="badge bg-emerald-100 text-emerald-700">● Sending</span>{% else %}<span class="badge bg-slate-100 text-slate-500">Paused</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

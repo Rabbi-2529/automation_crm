@@ -25,6 +25,7 @@ class ContactTableView(OrgMemberRequiredMixin, DataTableView):
         Column("Email / phone", _email_phone, ("email",)),
         Column("Stage", lambda c: cells.badge(c.get_lifecycle_stage_display(), cells.STAGE_COLORS.get(c.lifecycle_stage, "slate")),
                ("lifecycle_stage",)),
+        Column("Score", lambda c: cells.score(c), ("score",)),
         Column("Tags", lambda c: cells.tags(c.tags.all())),
         Column("Owner", lambda c: cells.person(c.owner), ("owner__first_name", "owner__email")),
         Column("Created", lambda c: cells.date(c.created_at), ("created_at",)),

@@ -1,0 +1,20 @@
+{% extends "public/base.html" %}
+{% block title %}Email preferences · {{ org.name }}{% endblock %}
+{% block body %}
+<main class="mx-auto max-w-md px-4 py-16">
+  <div class="rounded-xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+    <p class="text-sm font-semibold uppercase tracking-[0.15em] text-violet-600">{{ org.name }}</p>
+    {% if done %}
+      <h1 class="mt-2 text-xl font-semibold">You're unsubscribed</h1>
+      <p class="mt-2 text-sm text-slate-600">{{ contact.email }} won't get marketing emails from {{ org.name }} any more. Replies to messages you send us still reach you.</p>
+      <form method="post" class="mt-6"><input type="hidden" name="action" value="resubscribe">
+        <button class="rounded-lg px-4 py-2 text-sm font-medium text-violet-700 ring-1 ring-violet-300 hover:bg-violet-50">Changed your mind? Resubscribe</button></form>
+    {% else %}
+      <h1 class="mt-2 text-xl font-semibold">{% if changed %}You're subscribed again{% else %}Unsubscribe?{% endif %}</h1>
+      <p class="mt-2 text-sm text-slate-600">Stop marketing emails from {{ org.name }} to {{ contact.email }}.</p>
+      <form method="post" class="mt-6"><input type="hidden" name="action" value="unsubscribe">
+        <button class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700">Unsubscribe</button></form>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

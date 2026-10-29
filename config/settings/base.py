@@ -33,6 +33,8 @@ INSTALLED_APPS = [
     "apps.tasks",
     "apps.messaging",
     "apps.automation",
+    "apps.leads",
+    "apps.campaigns",
 ]
 
 MIDDLEWARE = [
@@ -120,6 +122,8 @@ CELERY_BEAT_SCHEDULE = {
     "fetch-inbound-email": {"task": "apps.messaging.tasks.fetch_all_inboxes", "schedule": 120.0},
     "resume-workflow-waits": {"task": "apps.automation.tasks.resume_waiting_runs", "schedule": 60.0},
     "scan-scheduled-triggers": {"task": "apps.automation.tasks.scan_scheduled_triggers", "schedule": 900.0},
+    "process-sequences": {"task": "apps.campaigns.tasks.process_sequences", "schedule": 60.0},
+    "process-broadcasts": {"task": "apps.campaigns.tasks.process_broadcasts", "schedule": 60.0},
 }
 
 LOGGING = {

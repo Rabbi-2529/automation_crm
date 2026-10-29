@@ -73,6 +73,12 @@ class ActivityKind(models.TextChoices):
     MESSAGE_FAILED = "message_failed", "Message failed"
     CALL_LOGGED = "call_logged", "Call logged"
     AUTOMATION = "automation", "Automation"
+    FORM_SUBMITTED = "form_submitted", "Form submitted"
+    LEAD_GRADE_CHANGED = "lead_grade_changed", "Lead grade changed"
+    UNSUBSCRIBED = "unsubscribed", "Unsubscribed"
+    RESUBSCRIBED = "resubscribed", "Resubscribed"
+    SEQUENCE_ENROLLED = "sequence_enrolled", "Added to sequence"
+    SEQUENCE_FINISHED = "sequence_finished", "Left sequence"
 
 
 class Activity(OrgScopedModel):

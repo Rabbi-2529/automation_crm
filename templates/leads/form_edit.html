@@ -1,0 +1,45 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if webform.pk %}Edit form{% else %}New form{% endif %}{% endblock %}
+{% block page_title %}
+<a href="{% url 'leads:form_list' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Web forms /</a>
+{% if webform.pk %}Edit {{ webform.name }}{% else %}New form{% endif %}
+{% endblock %}
+{% block content %}
+<form method="post" class="grid gap-6 lg:grid-cols-3">{% csrf_token %}
+  <div class="space-y-6 lg:col-span-2">
+    <section class="card overflow-x-auto p-0">
+      <h2 class="px-4 pt-4 font-semibold">Fields</h2>
+      <p class="px-4 text-sm text-slate-500">Tick the fields to show, in the order given. Email or Phone is required so the lead becomes a contact.</p>
+      {% if field_error %}<p class="mx-4 mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">{{ field_error }}</p>{% endif %}
+      <table class="table form-stack mt-2">
+        <thead class="bg-slate-50"><tr><th class="w-14">Show</th><th>Label on the form</th><th class="w-24">Required</th><th class="w-24">Order</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for row in rows %}
+          <tr>
+            <td><input type="checkbox" name="include__{{ row.slug }}" {% if row.include %}checked{% endif %} aria-label="Show {{ row.default_label }}"></td>
+            <td><input type="text" name="label__{{ row.slug }}" value="{{ row.label }}" class="!mt-0" aria-label="Label for {{ row.default_label }}">
+              <span class="text-xs text-slate-400">{{ row.default_label }}{% if row.key|slice:":3" == "cf:" %} · custom field{% endif %}</span></td>
+            <td><input type="checkbox" name="required__{{ row.slug }}" {% if row.required %}checked{% endif %} aria-label="{{ row.default_label }} required"></td>
+            <td><input type="number" name="position__{{ row.slug }}" value="{{ row.position }}" min="0" class="!mt-0" aria-label="Order of {{ row.default_label }}"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    <section class="card form-stack space-y-4">{% include "partials/form.html" %}</section>
+    <div class="flex justify-between">
+      <a href="{% if webform.pk %}{% url 'leads:form_detail' webform.pk %}{% else %}{% url 'leads:form_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+      <button class="btn btn-primary">Save form</button>
+    </div>
+  </div>
+  <aside class="card h-fit text-sm text-slate-600">
+    <h2 class="font-semibold text-slate-900">After someone submits</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+      <li>New people become contacts (source: Web form); known emails/phones update the existing contact without overwriting what you have.</li>
+      <li>The message field is saved as a note.</li>
+      <li>Use the <em>Web form is submitted</em> trigger in Automations to email them, assign an owner round robin or create a task.</li>
+      <li>Spam protection is built in: hidden honeypot field, timing check and rate limits.</li>
+    </ul>
+  </aside>
+</form>
+{% endblock %}

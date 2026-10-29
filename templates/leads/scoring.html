@@ -1,0 +1,41 @@
+{% extends "layouts/app.html" %}
+{% block title %}Lead scoring{% endblock %}
+{% block page_title %}Lead scoring{% endblock %}
+{% block page_actions %}
+<a href="{% url 'leads:rule_create' %}?kind=profile" class="btn btn-primary">+ Profile rule</a>
+<a href="{% url 'leads:rule_create' %}?kind=event" class="btn btn-secondary">+ Behaviour rule</a>
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="card overflow-x-auto p-0 lg:col-span-2">
+    <table class="table" data-datatable data-empty="No rules yet. Add points for who a lead is (profile) and what they do (behaviour).">
+      <thead class="bg-slate-50"><tr><th>Rule</th><th>Type</th><th>When</th><th>Points</th><th data-orderable="false"></th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for r in rules %}
+        <tr class="{% if not r.is_active %}opacity-50{% endif %}">
+          <td class="font-medium">{{ r.name }}</td>
+          <td>{% if r.kind == "profile" %}<span class="badge bg-sky-100 text-sky-700">Profile</span>{% else %}<span class="badge bg-violet-100 text-violet-700">Behaviour</span>{% endif %}</td>
+          <td class="text-slate-600">{% if r.kind == "event" %}{{ r.get_event_display }}{% if r.max_times %} (max {{ r.max_times }}×){% endif %}{% else %}{{ r.conditions.rules|length }} condition{{ r.conditions.rules|length|pluralize }}{% endif %}</td>
+          <td data-order="{{ r.points }}" class="font-semibold {% if r.points < 0 %}text-red-600{% else %}text-emerald-600{% endif %}">{{ r.points|stringformat:"+d" }}</td>
+          <td class="text-right"><a href="{% url 'leads:rule_edit' r.pk %}" class="text-sm text-violet-600 hover:underline">Edit</a> · <a href="{% url 'leads:rule_delete' r.pk %}" class="text-sm text-red-600 hover:underline">Delete</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <aside class="space-y-6">
+    <form method="post" class="card form-stack space-y-4">{% csrf_token %}
+      <h2 class="font-semibold">Grades</h2>
+      <p class="text-sm text-slate-500">Score ≥ warm → <span class="badge bg-amber-100 text-amber-700">Warm</span>, ≥ hot → <span class="badge bg-red-100 text-red-700">Hot</span>. A grade change shows on the timeline and can trigger workflows.</p>
+      {% include "partials/form.html" with form=settings_form %}
+      <button class="btn btn-primary">Save thresholds</button>
+    </form>
+    <form method="post" class="card text-sm">{% csrf_token %}
+      <input type="hidden" name="action" value="recalculate">
+      <h2 class="font-semibold">Recalculate</h2>
+      <p class="mt-1 text-slate-500">Scores update automatically as things happen. Run this after importing contacts.</p>
+      <button class="btn btn-secondary mt-3">Recalculate all scores</button>
+    </form>
+  </aside>
+</div>
+{% endblock %}
