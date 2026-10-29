@@ -1,24 +1,31 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import connection
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
+from apps.activities.models import Activity
+from apps.contacts.models import Company, Contact, LifecycleStage
 from apps.orgs.mixins import AdminRequiredMixin, OrgMemberRequiredMixin
 from apps.orgs.models import Membership, Team
 
 from .tasks import ping
 
 ROADMAP = [
-    ("Phase 1", "Contacts, companies, tags, custom fields, timeline"),
-    ("Phase 2", "Pipelines, deals, kanban, tasks"),
-    ("Phase 3", "Email & SMS, templates, inbox"),
-    ("Phase 4", "Automation engine: triggers → conditions → actions"),
-    ("Phase 5", "Web forms, lead scoring, drip campaigns"),
-    ("Phase 6", "Reports & dashboards"),
-    ("Phase 7", "REST API, webhooks, integrations"),
-    ("Phase 8", "Hardening, backups, deploy"),
+    ("Phase 0", "Foundation: auth, workspaces, roles, teams, background jobs", True),
+    ("Phase 1", "Contacts, companies, tags, custom fields, timeline, CSV import", True),
+    ("Phase 2", "Pipelines, deals, kanban, tasks", False),
+    ("Phase 3", "Email & SMS, templates, inbox", False),
+    ("Phase 4", "Automation engine: triggers → conditions → actions", False),
+    ("Phase 5", "Web forms, lead scoring, drip campaigns", False),
+    ("Phase 6", "Reports & dashboards", False),
+    ("Phase 7", "REST API, webhooks, integrations", False),
+    ("Phase 8", "Hardening, backups, deploy", False),
 ]
 
 
@@ -27,10 +34,18 @@ class DashboardView(OrgMemberRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         org = self.request.org
+        contacts = Contact.objects.for_org(org)
+        stage_counts = dict(contacts.values_list("lifecycle_stage").annotate(n=Count("pk")))
+        week_ago = timezone.now() - timedelta(days=7)
         return super().get_context_data(
             member_count=Membership.objects.filter(org=org, is_active=True).count(),
             team_count=Team.objects.for_org(org).count(),
-            my_teams=self.request.membership.teams.all(),
+            contact_count=contacts.count(),
+            new_contacts_week=contacts.filter(created_at__gte=week_ago).count(),
+            my_contact_count=contacts.filter(owner=self.request.user).count(),
+            company_count=Company.objects.for_org(org).count(),
+            stages=[(value, label, stage_counts.get(value, 0)) for value, label in LifecycleStage.choices],
+            recent_activity=Activity.objects.for_org(org).select_related("actor", "contact", "company")[:12],
             roadmap=ROADMAP,
             **kwargs,
         )

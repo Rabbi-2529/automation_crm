@@ -1,0 +1,35 @@
+{# Polls itself every 2s while the Celery task runs, then stops. #}
+<div id="import-progress" {% if job.is_active %}hx-get="{% url 'contacts:import_detail' job.pk %}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %} class="space-y-6">
+  <div class="card">
+    <div class="flex items-center justify-between text-sm">
+      <span class="font-medium">{{ job.get_status_display }}</span>
+      <span class="text-slate-500">{{ job.processed_rows }} / {{ job.total_rows }} rows</span>
+    </div>
+    <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+      <div class="h-full rounded-full {% if job.status == 'failed' %}bg-red-500{% else %}bg-violet-500{% endif %} transition-all" style="width: {% if job.status == 'done' %}100{% else %}{{ job.percent }}{% endif %}%"></div>
+    </div>
+    <dl class="mt-6 grid grid-cols-2 gap-4 text-center sm:grid-cols-4">
+      <div><dt class="text-xs uppercase text-slate-400">Created</dt><dd class="text-2xl font-semibold text-emerald-600">{{ job.created_count }}</dd></div>
+      <div><dt class="text-xs uppercase text-slate-400">Updated</dt><dd class="text-2xl font-semibold text-sky-600">{{ job.updated_count }}</dd></div>
+      <div><dt class="text-xs uppercase text-slate-400">Skipped</dt><dd class="text-2xl font-semibold text-slate-500">{{ job.skipped_count }}</dd></div>
+      <div><dt class="text-xs uppercase text-slate-400">Errors</dt><dd class="text-2xl font-semibold {% if job.error_count %}text-red-600{% else %}text-slate-500{% endif %}">{{ job.error_count }}</dd></div>
+    </dl>
+    {% if job.status == 'done' %}
+    <div class="mt-6 flex gap-2"><a href="{% url 'contacts:contact_list' %}?sort=-created" class="btn btn-primary">View contacts</a><a href="{% url 'contacts:import_upload' %}" class="btn btn-secondary">Import another file</a></div>
+    {% elif job.status == 'queued' %}
+    <p class="mt-4 text-sm text-slate-500">Waiting for a background worker to pick this up…</p>
+    {% endif %}
+  </div>
+
+  {% if job.errors %}
+  <div class="card overflow-x-auto p-0">
+    <h2 class="px-4 pt-4 font-semibold">Rows that weren't imported{% if job.error_count > job.errors|length %} (first {{ job.errors|length }} of {{ job.error_count }}){% endif %}</h2>
+    <table class="table">
+      <thead class="bg-slate-50"><tr><th class="w-24">Line</th><th>Problem</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for e in job.errors %}<tr><td>{{ e.row|default:"—" }}</td><td>{{ e.message }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>

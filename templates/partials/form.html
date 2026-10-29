@@ -10,6 +10,11 @@
   <div>
     {% if field.widget_type == "checkbox" %}
       <label class="flex items-center gap-2 text-sm font-medium text-slate-700">{{ field }} {{ field.label }}</label>
+    {% elif field.widget_type == "radioselect" %}
+      <p class="text-sm font-medium text-slate-700">{{ field.label }}</p>
+      <div class="mt-2 space-y-2">
+        {% for choice in field %}<label class="flex items-center gap-2 text-sm">{{ choice.tag }} {{ choice.choice_label }}</label>{% endfor %}
+      </div>
     {% elif field.widget_type == "checkboxselectmultiple" %}
       <p class="text-sm font-medium text-slate-700">{{ field.label }}</p>
       <div class="mt-2 grid gap-2 sm:grid-cols-2">

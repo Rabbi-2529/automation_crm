@@ -1,0 +1,31 @@
+{% extends "layouts/app.html" %}
+{% block title %}Custom fields{% endblock %}
+{% block page_title %}Custom fields{% endblock %}
+{% block page_actions %}
+<a href="{% url 'contacts:custom_field_create' %}?entity=contact" class="btn btn-primary">+ Contact field</a>
+<a href="{% url 'contacts:custom_field_create' %}?entity=company" class="btn btn-secondary">+ Company field</a>
+{% endblock %}
+{% block content %}
+{% regroup definitions by get_entity_display as groups %}
+{% for group in groups %}
+<h2 class="mb-2 mt-6 font-semibold first:mt-0">{{ group.grouper }} fields</h2>
+<div class="card overflow-x-auto p-0">
+  <table class="table">
+    <thead class="bg-slate-50"><tr><th>Label</th><th>Key</th><th>Type</th><th>Required</th><th></th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for d in group.list %}
+      <tr>
+        <td class="font-medium">{{ d.label }}</td>
+        <td><code class="text-xs">{{ d.key }}</code></td>
+        <td>{{ d.get_field_type_display }}{% if d.options %} <span class="text-xs text-slate-400">({{ d.options|join:", " }})</span>{% endif %}</td>
+        <td>{{ d.required|yesno:"Yes,—" }}</td>
+        <td class="text-right"><a href="{% url 'contacts:custom_field_edit' d.pk %}" class="text-violet-600 hover:underline">Edit</a> · <a href="{% url 'contacts:custom_field_delete' d.pk %}" class="text-red-600 hover:underline">Delete</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% empty %}
+<div class="card text-center text-sm text-slate-500">No custom fields yet. Add fields like “Budget”, “District” or “Lead source detail” to capture what your team needs.</div>
+{% endfor %}
+{% endblock %}

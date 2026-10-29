@@ -1,0 +1,8 @@
+{% if custom_values %}
+<dl class="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm">
+  {% for definition, value in custom_values %}
+  <div class="flex justify-between gap-4"><dt class="text-slate-500">{{ definition.label }}</dt>
+    <dd class="text-right font-medium">{% if definition.field_type == "url" %}<a href="{{ value }}" target="_blank" rel="noopener noreferrer" class="text-violet-600 hover:underline">{{ value }}</a>{% else %}{{ value }}{% endif %}</dd></div>
+  {% endfor %}
+</dl>
+{% endif %}

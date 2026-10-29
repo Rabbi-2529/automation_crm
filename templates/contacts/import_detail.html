@@ -1,0 +1,7 @@
+{% extends "layouts/app.html" %}
+{% block title %}Import{% endblock %}
+{% block page_title %}Import · {{ job.original_name }}{% endblock %}
+{% block page_actions %}<a href="{% url 'contacts:import_list' %}" class="btn btn-secondary">All imports</a>{% endblock %}
+{% block content %}
+{% include "contacts/partials/import_progress.html" %}
+{% endblock %}

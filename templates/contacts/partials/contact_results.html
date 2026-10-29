@@ -1,0 +1,34 @@
+<div class="card overflow-x-auto p-0">
+  <table class="table">
+    <thead class="bg-slate-50">
+      <tr>
+        <th class="w-8"><input type="checkbox" id="select-all" aria-label="Select all on this page" class="h-4 w-4"></th>
+        <th>Name</th><th>Company</th><th>Email / phone</th><th>Stage</th><th>Tags</th><th>Owner</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for c in contacts %}
+      <tr class="hover:bg-slate-50">
+        <td><input type="checkbox" name="ids" value="{{ c.pk }}" form="bulk-form" aria-label="Select {{ c.display_name }}" class="h-4 w-4"></td>
+        <td>
+          <a href="{% url 'contacts:contact_detail' c.pk %}" class="flex items-center gap-3 font-medium text-slate-900 hover:text-violet-700">
+            <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-violet-100 text-xs font-semibold text-violet-700">{{ c.initials }}</span>
+            <span>{{ c.display_name }}{% if c.job_title %}<span class="block text-xs font-normal text-slate-500">{{ c.job_title }}</span>{% endif %}</span>
+          </a>
+        </td>
+        <td>{% if c.company %}<a href="{% url 'contacts:company_detail' c.company.pk %}" class="hover:text-violet-700">{{ c.company.name }}</a>{% else %}<span class="text-slate-400">—</span>{% endif %}</td>
+        <td>{{ c.email|default:"" }}{% if c.email and c.phone %}<br>{% endif %}<span class="text-slate-500">{{ c.phone }}</span></td>
+        <td>{% include "contacts/partials/stage_badge.html" with stage=c.lifecycle_stage label=c.get_lifecycle_stage_display %}</td>
+        <td><div class="flex flex-wrap gap-1">{% for tag in c.tags.all %}{% include "contacts/partials/tag_chip.html" %}{% endfor %}</div></td>
+        <td>{{ c.owner.display_name|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="py-12 text-center text-slate-500">
+        {% if request.GET.q or request.GET.stage or request.GET.tag or request.GET.owner %}No contacts match these filters.
+        {% else %}No contacts yet. <a href="{% url 'contacts:contact_create' %}" class="text-violet-600 hover:underline">Add one</a>{% if current_membership.is_manager %} or <a href="{% url 'contacts:import_upload' %}" class="text-violet-600 hover:underline">import a CSV</a>{% endif %}.{% endif %}
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% include "contacts/partials/pagination.html" %}
+</div>

@@ -26,6 +26,8 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.accounts",
     "apps.orgs",
+    "apps.contacts",
+    "apps.activities",
 ]
 
 MIDDLEWARE = [
@@ -96,7 +98,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 vars().update(env.email_url("EMAIL_URL", default="consolemail://"))
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Automation CRM <no-reply@localhost>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ThingBD CRM <no-reply@thingbd.com>")
 
 # Celery
 CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
@@ -114,3 +116,7 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": "INFO"},
 }
+
+# Uploads (Phase 1)
+ATTACHMENT_MAX_MB = env.int("ATTACHMENT_MAX_MB", default=10)
+IMPORT_MAX_MB = env.int("IMPORT_MAX_MB", default=10)

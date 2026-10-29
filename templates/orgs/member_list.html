@@ -13,10 +13,10 @@
       <tr class="{% if not m.is_active %}opacity-50{% endif %}">
         <td class="font-medium">{{ m.user.display_name }}{% if m.user == request.user %} <span class="text-xs text-slate-400">(you)</span>{% endif %}</td>
         <td>{{ m.user.email }}</td>
-        <td><span class="badge {% if m.role == 'admin' %}bg-indigo-100 text-indigo-700{% elif m.role == 'manager' %}bg-amber-100 text-amber-700{% else %}bg-slate-100 text-slate-600{% endif %}">{{ m.get_role_display }}</span></td>
+        <td><span class="badge {% if m.role == 'admin' %}bg-violet-100 text-violet-700{% elif m.role == 'manager' %}bg-amber-100 text-amber-700{% else %}bg-slate-100 text-slate-600{% endif %}">{{ m.get_role_display }}</span></td>
         <td>{% for t in m.teams.all %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-slate-400">—</span>{% endfor %}</td>
         <td>{% if not m.is_active %}Deactivated{% elif not m.user.has_usable_password %}<span class="text-amber-600">Invited</span>{% else %}Active{% endif %}</td>
-        <td class="text-right">{% if current_membership.is_admin %}<a href="{% url 'orgs:member_edit' m.pk %}" class="text-indigo-600 hover:underline">Edit</a>{% endif %}</td>
+        <td class="text-right">{% if current_membership.is_admin %}<a href="{% url 'orgs:member_edit' m.pk %}" class="text-violet-600 hover:underline">Edit</a>{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>

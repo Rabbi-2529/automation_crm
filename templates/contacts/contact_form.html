@@ -1,0 +1,24 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if object %}Edit contact{% else %}New contact{% endif %}{% endblock %}
+{% block page_title %}{% if object %}Edit {{ object.display_name }}{% else %}New contact{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-3xl space-y-6">{% csrf_token %}
+  {% if form.possible_duplicates %}
+  <div class="rounded-lg bg-amber-50 p-4 text-sm ring-1 ring-amber-200">
+    <p class="font-medium text-amber-800">Possible duplicates</p>
+    <ul class="mt-2 space-y-1">
+      {% for d in form.possible_duplicates %}
+      <li><a href="{% url 'contacts:contact_detail' d.pk %}" target="_blank" class="text-violet-700 hover:underline">{{ d.display_name }}</a>
+        <span class="text-amber-700">{{ d.email }} {{ d.phone }}{% if d.company %} · {{ d.company.name }}{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+    <p class="mt-2 text-amber-700">If this is a different person, press <strong>Save anyway</strong>.</p>
+  </div>
+  {% endif %}
+  {% include "partials/form.html" %}
+  <div class="flex items-center justify-between">
+    <a href="{% if object %}{% url 'contacts:contact_detail' object.pk %}{% else %}{% url 'contacts:contact_list' %}{% endif %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary">{% if form.possible_duplicates %}Save anyway{% else %}Save contact{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

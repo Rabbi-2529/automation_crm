@@ -3,21 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Automation CRM{% endblock %} · Automation CRM</title>
+  <title>{% block title %}ThingBD CRM{% endblock %} · ThingBD CRM</title>
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   {# CDN builds for now; Phase 8 replaces these with a compiled Tailwind file and vendored HTMX. #}
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
   <style type="text/tailwindcss">
+    /* ThingBD brand (thingbd.com): violet #8B5CF6, near-black #050505 / #121118, Outfit. */
+    @theme {
+      --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+    }
     @layer components {
       .btn { @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50; }
-      .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
+      .btn-primary { @apply bg-violet-600 text-white hover:bg-violet-700; }
       .btn-secondary { @apply bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50; }
       .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
       .card { @apply rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200; }
       .form-stack input:not([type=checkbox]):not([type=radio]), .form-stack select, .form-stack textarea {
-        @apply mt-1 block w-full rounded-lg border-0 px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none;
+        @apply mt-1 block w-full rounded-lg border-0 px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-300 focus:ring-2 focus:ring-violet-500 focus:outline-none;
       }
-      .form-stack input[type=checkbox] { @apply h-4 w-4 rounded border-slate-300 text-indigo-600; }
+      .form-stack input[type=checkbox] { @apply h-4 w-4 rounded border-slate-300 text-violet-600; }
       .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
       .table { @apply min-w-full divide-y divide-slate-200 text-sm; }
       .table th { @apply px-4 py-3 text-left font-semibold text-slate-600; }

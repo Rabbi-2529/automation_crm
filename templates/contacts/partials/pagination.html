@@ -1,0 +1,10 @@
+{% if is_paginated %}
+<nav class="flex items-center justify-between border-t border-slate-200 px-4 py-3 text-sm">
+  <p class="text-slate-500">{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }}</p>
+  <div class="flex gap-2">
+    {% if page_obj.has_previous %}<a class="btn btn-secondary py-1" href="{% querystring page=page_obj.previous_page_number %}">← Prev</a>{% endif %}
+    <span class="px-2 py-1 text-slate-500">Page {{ page_obj.number }} / {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a class="btn btn-secondary py-1" href="{% querystring page=page_obj.next_page_number %}">Next →</a>{% endif %}
+  </div>
+</nav>
+{% endif %}

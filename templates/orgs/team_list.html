@@ -10,7 +10,7 @@
   <div class="card">
     <div class="flex items-start justify-between gap-2">
       <h2 class="font-semibold text-slate-900">{{ team.name }}</h2>
-      {% if current_membership.is_manager %}<a href="{% url 'orgs:team_edit' team.pk %}" class="text-sm text-indigo-600 hover:underline">Edit</a>{% endif %}
+      {% if current_membership.is_manager %}<a href="{% url 'orgs:team_edit' team.pk %}" class="text-sm text-violet-600 hover:underline">Edit</a>{% endif %}
     </div>
     {% if team.description %}<p class="mt-1 text-sm text-slate-500">{{ team.description }}</p>{% endif %}
     <p class="mt-4 text-xs uppercase tracking-wide text-slate-400">Lead</p>

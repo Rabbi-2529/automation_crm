@@ -1,0 +1,49 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ company.name }}{% endblock %}
+{% block page_title %}
+<a href="{% url 'contacts:company_list' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Companies /</a> {{ company.name }}
+{% endblock %}
+{% block page_actions %}
+<a href="{% url 'contacts:contact_create' %}?company={{ company.pk }}" class="btn btn-secondary">+ Add contact</a>
+<a href="{% url 'contacts:company_edit' company.pk %}" class="btn btn-secondary">Edit</a>
+{% if current_membership.is_manager %}<a href="{% url 'contacts:company_delete' company.pk %}" class="btn btn-secondary text-red-600">Delete</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6">
+    <div class="card">
+      <p class="text-lg font-semibold">{{ company.name }}</p>
+      {% if company.industry %}<p class="text-sm text-slate-500">{{ company.industry }}</p>{% endif %}
+      <dl class="mt-5 space-y-2 text-sm">
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Website</dt><dd class="truncate">{% if company.website %}<a href="{{ company.website }}" target="_blank" rel="noopener noreferrer" class="text-violet-600 hover:underline">{{ company.website }}</a>{% else %}—{% endif %}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Domain</dt><dd>{{ company.domain|default:"—" }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Phone</dt><dd>{{ company.phone|default:"—" }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Address</dt><dd class="text-right">{{ company.address }}{% if company.address %}<br>{% endif %}{{ company.city }}{% if company.city and company.country %}, {% endif %}{{ company.country }}{% if not company.address and not company.city and not company.country %}—{% endif %}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Owner</dt><dd>{{ company.owner.display_name|default:"Unassigned" }}</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-slate-500">Created</dt><dd>{{ company.created_at|date:"d M Y" }}</dd></div>
+      </dl>
+      {% include "contacts/partials/custom_values.html" %}
+      <div class="mt-4 flex flex-wrap gap-1 border-t border-slate-100 pt-4">
+        {% for tag in company.tags.all %}{% include "contacts/partials/tag_chip.html" %}{% empty %}<span class="text-sm text-slate-400">No tags</span>{% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="font-semibold">People ({{ people|length }})</h2>
+      <ul class="mt-3 divide-y divide-slate-100 text-sm">
+        {% for c in people %}
+        <li class="flex items-center justify-between gap-2 py-2">
+          <a href="{% url 'contacts:contact_detail' c.pk %}" class="hover:text-violet-700">{{ c.display_name }}<span class="block text-xs text-slate-400">{{ c.job_title }}</span></a>
+          {% include "contacts/partials/stage_badge.html" with stage=c.lifecycle_stage label=c.get_lifecycle_stage_display %}
+        </li>
+        {% empty %}<li class="py-2 text-slate-500">No contacts linked yet.</li>{% endfor %}
+      </ul>
+    </div>
+
+    {% include "contacts/partials/attachments.html" with target="company" obj=company %}
+  </div>
+  <div class="lg:col-span-2">
+    {% include "contacts/partials/timeline.html" with target="company" obj=company %}
+  </div>
+</div>
+{% endblock %}

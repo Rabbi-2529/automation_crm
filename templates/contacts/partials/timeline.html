@@ -1,0 +1,32 @@
+{# Args: activities, target ("contact"/"company"), obj, note_form #}
+<div class="card">
+  <form method="post" action="{% url 'activities:note_create' target obj.pk %}" class="form-stack space-y-3">{% csrf_token %}
+    {{ note_form.body }}
+    <div class="flex justify-end"><button class="btn btn-primary py-1.5">Add note</button></div>
+  </form>
+
+  <h2 class="mt-6 font-semibold">Timeline</h2>
+  <ol class="mt-4 space-y-4 border-l border-slate-200 pl-5">
+    {% for a in activities %}
+    <li class="relative">
+      <span class="absolute -left-[27px] top-1 grid h-3 w-3 place-items-center rounded-full ring-4 ring-white
+        {% if a.kind == 'note_added' %}bg-violet-500{% elif a.kind == 'stage_changed' %}bg-emerald-500{% elif a.kind == 'owner_changed' %}bg-amber-500{% elif a.kind == 'attachment_added' %}bg-sky-500{% else %}bg-slate-300{% endif %}"></span>
+      <p class="text-sm text-slate-800">{{ a.summary }}</p>
+      {% if a.note %}
+      <div class="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-700 ring-1 ring-slate-200">{{ a.note.body|linebreaksbr }}</div>
+      {% endif %}
+      {% if a.attachment %}
+      <a href="{% url 'activities:attachment_download' a.attachment.pk %}" class="mt-1 inline-block text-sm text-violet-600 hover:underline">Download {{ a.attachment.original_name }}</a>
+      {% endif %}
+      <p class="mt-1 text-xs text-slate-400">
+        {{ a.actor.display_name|default:"System" }} · <time datetime="{{ a.created_at|date:'c' }}" title="{{ a.created_at }}">{{ a.created_at|timesince }} ago</time>
+        {% if a.note and a.note.author_id == request.user.pk or a.note and current_membership.is_manager %}
+        · <form method="post" action="{% url 'activities:note_delete' a.note.pk %}" class="inline" onsubmit="return confirm('Delete this note?')">{% csrf_token %}<button class="text-red-500 hover:underline">delete</button></form>
+        {% endif %}
+      </p>
+    </li>
+    {% empty %}
+    <li class="text-sm text-slate-500">Nothing yet.</li>
+    {% endfor %}
+  </ol>
+</div>

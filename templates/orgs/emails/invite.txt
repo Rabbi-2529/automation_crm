@@ -1,6 +1,6 @@
 {% autoescape off %}Hi {{ membership.user.display_name }},
 
-{{ invited_by.display_name }} added you to {{ membership.org.name }} on Automation CRM as {{ membership.get_role_display }}.
+{{ invited_by.display_name }} added you to {{ membership.org.name }} on ThingBD CRM as {{ membership.get_role_display }}.
 
 {% if is_new_user %}Set your password to get started:{% else %}Log in to get started:{% endif %}
 {{ link }}

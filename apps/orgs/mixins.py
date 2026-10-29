@@ -26,3 +26,17 @@ class ManagerRequiredMixin(OrgMemberRequiredMixin):
 
 class AdminRequiredMixin(OrgMemberRequiredMixin):
     min_role = Role.ADMIN
+
+
+class OrgScopedQuerysetMixin:
+    """For generic views on OrgScopedModel subclasses: objects from other orgs 404."""
+
+    def get_queryset(self):
+        return self.model.objects.for_org(self.request.org)
+
+
+class OrgFormKwargsMixin:
+    """Passes `org=request.org` to forms built on OrgModelForm."""
+
+    def get_form_kwargs(self):
+        return {**super().get_form_kwargs(), "org": self.request.org}

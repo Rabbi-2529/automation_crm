@@ -1,0 +1,41 @@
+{% extends "layouts/app.html" %}
+{% block title %}Match columns{% endblock %}
+{% block page_title %}Match columns · {{ job.original_name }}{% endblock %}
+{% block content %}
+<form method="post" class="space-y-6">{% csrf_token %}
+  <ol class="flex gap-4 text-sm"><li class="text-slate-400">1. Upload</li><li class="font-semibold text-violet-700">2. Match columns</li><li class="text-slate-400">3. Import</li></ol>
+  {% if form.non_field_errors %}
+  <div class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-200">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>
+  {% endif %}
+  <div class="card overflow-x-auto p-0">
+    <p class="px-4 pt-4 text-sm text-slate-500">{{ job.total_rows }} data rows found. Pick the CRM field for each column.</p>
+    <table class="table form-stack">
+      <thead class="bg-slate-50"><tr><th>CSV column</th><th>Imports into</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for field in form.column_fields %}
+        <tr><td class="font-medium">{{ field.label }}</td><td class="max-w-xs">{{ field }}{% for e in field.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="card form-stack space-y-4">
+    <h2 class="font-semibold">Options</h2>
+    {% for field in form.option_fields %}
+    <div>
+      {% if field.widget_type == "radioselect" or field.widget_type == "checkboxselectmultiple" %}
+        <p class="text-sm font-medium text-slate-700">{{ field.label }}</p>
+        <div class="mt-2 flex flex-wrap gap-x-6 gap-y-2">{% for choice in field %}<label class="flex items-center gap-2 text-sm">{{ choice.tag }} {{ choice.choice_label }}</label>{% empty %}<span class="text-sm text-slate-400">No tags yet.</span>{% endfor %}</div>
+      {% else %}
+        <label class="text-sm font-medium text-slate-700" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+        {% if field.help_text %}<p class="mt-1 text-xs text-slate-500">{{ field.help_text }}</p>{% endif %}
+      {% endif %}
+      {% for e in field.errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="flex justify-between">
+    <a href="{% url 'contacts:import_upload' %}" class="btn btn-secondary">Start over</a>
+    <button class="btn btn-primary">Import {{ job.total_rows }} rows</button>
+  </div>
+</form>
+{% endblock %}

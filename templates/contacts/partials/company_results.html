@@ -1,0 +1,21 @@
+<div class="card overflow-x-auto p-0">
+  <table class="table">
+    <thead class="bg-slate-50"><tr><th>Company</th><th>Industry</th><th>Location</th><th>Contacts</th><th>Tags</th><th>Owner</th></tr></thead>
+    <tbody class="divide-y divide-slate-100">
+      {% for c in companies %}
+      <tr class="hover:bg-slate-50">
+        <td><a href="{% url 'contacts:company_detail' c.pk %}" class="font-medium text-slate-900 hover:text-violet-700">{{ c.name }}</a>
+          {% if c.domain %}<span class="block text-xs text-slate-500">{{ c.domain }}</span>{% endif %}</td>
+        <td>{{ c.industry|default:"—" }}</td>
+        <td>{{ c.city }}{% if c.city and c.country %}, {% endif %}{{ c.country }}</td>
+        <td>{{ c.contact_count }}</td>
+        <td><div class="flex flex-wrap gap-1">{% for tag in c.tags.all %}{% include "contacts/partials/tag_chip.html" %}{% endfor %}</div></td>
+        <td>{{ c.owner.display_name|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="py-12 text-center text-slate-500">{% if request.GET.q or request.GET.tag or request.GET.owner %}No companies match these filters.{% else %}No companies yet.{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% include "contacts/partials/pagination.html" %}
+</div>

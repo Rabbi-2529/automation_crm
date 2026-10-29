@@ -1,34 +1,45 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load static %}
 {% block body %}
 {% with url_name=request.resolver_match.url_name ns=request.resolver_match.namespace %}
 <div class="flex min-h-full">
-  <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-slate-900 text-slate-300 lg:flex">
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-[#050505] text-[#A19DAB] lg:flex">
     <div class="flex h-16 items-center gap-2 px-6 text-lg font-semibold text-white">
-      <span class="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600">⚡</span> Automation CRM
+      <img src="{% static 'img/favicon.svg' %}" alt="" class="h-8 w-8"> ThingBD CRM
     </div>
     <nav class="flex-1 space-y-1 px-3 py-4 text-sm">
       {% include "partials/nav_link.html" with href="/" label="Dashboard" match="dashboard" %}
-      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">CRM</p>
-      {% include "partials/nav_link.html" with label="Contacts" soon="Phase 1" %}
+      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">CRM</p>
+      {% url "contacts:contact_list" as contacts_url %}
+      {% include "partials/nav_link.html" with href=contacts_url label="Contacts" match="contact" %}
+      {% url "contacts:company_list" as companies_url %}
+      {% include "partials/nav_link.html" with href=companies_url label="Companies" match="company" %}
+      {% if current_membership.is_manager %}
+        {% url "contacts:import_list" as imports_url %}
+        {% include "partials/nav_link.html" with href=imports_url label="Imports" match="import" %}
+      {% endif %}
       {% include "partials/nav_link.html" with label="Deals" soon="Phase 2" %}
       {% include "partials/nav_link.html" with label="Inbox" soon="Phase 3" %}
       {% include "partials/nav_link.html" with label="Automations" soon="Phase 4" %}
       {% include "partials/nav_link.html" with label="Reports" soon="Phase 6" %}
-      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Workspace</p>
+      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">Workspace</p>
       {% url "orgs:teams" as teams_url %}
       {% include "partials/nav_link.html" with href=teams_url label="Teams" match="team" %}
       {% if current_membership.is_manager %}
         {% url "orgs:members" as members_url %}
         {% include "partials/nav_link.html" with href=members_url label="Members" match="member" %}
+        {% url "contacts:tag_list" as tags_url %}
+        {% include "partials/nav_link.html" with href=tags_url label="Tags" match="tag_" %}
       {% endif %}
       {% if current_membership.is_admin %}
         {% url "orgs:settings" as settings_url %}
         {% include "partials/nav_link.html" with href=settings_url label="Settings" match="settings" %}
+        {% url "contacts:custom_field_list" as fields_url %}
+        {% include "partials/nav_link.html" with href=fields_url label="Custom fields" match="custom_field" %}
         {% url "core:system" as system_url %}
         {% include "partials/nav_link.html" with href=system_url label="System status" match="system" %}
       {% endif %}
     </nav>
-    <div class="border-t border-slate-800 p-4 text-xs text-slate-500">Signed in as {{ request.user.email }}</div>
+    <div class="border-t border-white/10 p-4 text-xs text-slate-500">Signed in as {{ request.user.email }}</div>
   </aside>
 
   <div class="flex min-h-full flex-1 flex-col lg:pl-64">
@@ -42,16 +53,16 @@
         <div class="absolute left-0 mt-2 w-64 rounded-lg bg-white p-2 shadow-lg ring-1 ring-slate-200">
           {% for m in user_memberships %}
             <form method="post" action="{% url 'orgs:switch' m.org_id %}">{% csrf_token %}
-              <button class="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-100 {% if m.org_id == current_org.pk %}font-semibold text-indigo-600{% endif %}">{{ m.org.name }}</button>
+              <button class="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-100 {% if m.org_id == current_org.pk %}font-semibold text-violet-600{% endif %}">{{ m.org.name }}</button>
             </form>
           {% endfor %}
-          <a href="{% url 'orgs:create' %}" class="mt-1 block border-t border-slate-100 px-3 py-2 text-sm text-indigo-600 hover:bg-slate-50">+ New workspace</a>
+          <a href="{% url 'orgs:create' %}" class="mt-1 block border-t border-slate-100 px-3 py-2 text-sm text-violet-600 hover:bg-slate-50">+ New workspace</a>
         </div>
       </details>
 
       <div class="ml-auto flex items-center gap-3">
         <details class="relative">
-          <summary class="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">{{ request.user.initials }}</summary>
+          <summary class="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-full bg-violet-100 text-sm font-semibold text-violet-700">{{ request.user.initials }}</summary>
           <div class="absolute right-0 mt-2 w-48 rounded-lg bg-white p-2 text-sm shadow-lg ring-1 ring-slate-200">
             <a href="{% url 'accounts:profile' %}" class="block rounded px-3 py-2 hover:bg-slate-100">Profile</a>
             <a href="{% url 'accounts:password_change' %}" class="block rounded px-3 py-2 hover:bg-slate-100">Change password</a>
@@ -68,7 +79,7 @@
         {% include "partials/messages.html" %}
         <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
           <h1 class="text-2xl font-semibold text-slate-900">{% block page_title %}{% endblock %}</h1>
-          <div class="flex gap-2">{% block page_actions %}{% endblock %}</div>
+          <div class="flex flex-wrap gap-2">{% block page_actions %}{% endblock %}</div>
         </div>
         {% block content %}{% endblock %}
       </div>
