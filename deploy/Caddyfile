@@ -1,0 +1,24 @@
+# HTTPS reverse proxy for ThingBD CRM. Caddy fetches and renews the certificate for {$DOMAIN} on its own
+# (point the domain's DNS A record at this server first, and open ports 80 and 443).
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Uploads (imports, attachments) are limited in Django too; this just stops huge bodies early.
+	request_body {
+		max_size 30MB
+	}
+
+	header {
+		-Server
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+	}
+
+	# Caddy replaces any X-Forwarded-For sent by the client, so Django sees the real visitor IP.
+	# (No active health checks here: they'd use "web:8000" as the Host, which Django rejects. Docker checks web instead.)
+	reverse_proxy web:8000
+}
+
+# www -> bare domain
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

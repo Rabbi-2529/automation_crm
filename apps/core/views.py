@@ -1,4 +1,6 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
+from pathlib import Path
 
 from django.conf import settings
 from django.db import connection
@@ -28,7 +30,7 @@ ROADMAP = [
     ("Phase 5", "Lead & communication automation: forms, scoring, segments, sequences, broadcasts", True),
     ("Phase 6", "Sales & reporting automation: dashboards, funnel, forecast, targets, scheduled reports", True),
     ("Phase 7", "REST API, integrations (WhatsApp, Facebook lead ads)", True),
-    ("Phase 8", "Hardening, backups, deploy", False),
+    ("Phase 8", "Hardening, backups, deploy", True),
 ]
 
 
@@ -83,6 +85,21 @@ class HealthView(View):
         return JsonResponse({"status": "ok" if db_ok else "error", "database": db_ok}, status=200 if db_ok else 503)
 
 
+def backup_status():
+    """Latest backup written by the backup service, or None when backups aren't set up here."""
+    if not settings.BACKUP_DIR:
+        return None
+    folder = Path(settings.BACKUP_DIR)
+    dumps = sorted(folder.glob("crm-*.dump")) if folder.is_dir() else []
+    latest = dumps[-1] if dumps else None
+    taken = datetime.fromtimestamp(latest.stat().st_mtime, tz=dt_timezone.utc) if latest else None
+    return {
+        "folder": str(folder), "count": len(dumps), "latest": latest.name if latest else "",
+        "size_mb": round(latest.stat().st_size / 1_048_576, 1) if latest else 0, "taken": taken,
+        "stale": taken is None or timezone.now() - taken > timedelta(hours=settings.BACKUP_STALE_HOURS),
+    }
+
+
 class SystemStatusView(AdminRequiredMixin, TemplateView):
     template_name = "core/system_status.html"
 
@@ -93,6 +110,7 @@ class SystemStatusView(AdminRequiredMixin, TemplateView):
             db_detail=db_detail,
             broker=settings.CELERY_BROKER_URL.split("@")[-1],
             eager=settings.CELERY_TASK_ALWAYS_EAGER,
+            backup=backup_status(), stale_hours=settings.BACKUP_STALE_HOURS,
             **kwargs,
         )
 

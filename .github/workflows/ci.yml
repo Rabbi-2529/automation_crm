@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Migrations are up to date
+        run: python manage.py makemigrations --check --dry-run --settings=config.settings.test
+      - name: Tests
+        run: python manage.py test --settings=config.settings.test
+      - name: Production settings pass Django's deploy checks
+        env:
+          SECRET_KEY: ci-only-${{ github.run_id }}-not-a-real-secret-0123456789abcdef
+          FIELD_ENCRYPTION_KEY: Zm9yLWNpLW9ubHktbm90LWEtcmVhbC1rZXktMDEyMzQ=
+          ALLOWED_HOSTS: crm.example.com
+          ADMIN_URL: ci-admin/
+          CACHE_URL: locmemcache://
+        run: python manage.py check --deploy --fail-level WARNING --settings=config.settings.prod
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Production image builds (front-end assets, collectstatic)
+        run: docker build -t thingbd-crm-app .

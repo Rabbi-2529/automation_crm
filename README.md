@@ -16,7 +16,7 @@ ThingBD's ([thingbd.com](https://thingbd.com/)) multi-tenant CRM built on Django
 | 5 | **Lead management & communication automation**: web forms, lead scoring & grades, segments, email/SMS sequences, broadcasts, unsubscribe & SMS STOP, quiet hours, speed-to-lead / date / deal-idle triggers | ✅ done |
 | 6 | **Sales & reporting automation**: sales dashboard with charts, funnel & win rate, forecast, rep leaderboard, targets & attainment, scheduled email reports (team summary + rep pipeline digest), CSV exports | ✅ done |
 | 7 | **REST API & integrations**: API keys + REST API with Swagger docs, signed outgoing webhooks with retries, WhatsApp Cloud API (send, inbox, templates, workflows), Facebook lead ads, Google Calendar subscription feed | ✅ done |
-| 8 | Hardening, backups, production deploy | next |
+| 8 | **Hardening & deploy**: production Docker stack (gunicorn + Caddy auto-HTTPS), compiled Tailwind + vendored assets, login throttling, strict production settings, nightly backups with restore, branded error pages, CI, demo seed | ✅ done |
 
 ### Automation coverage
 
@@ -41,6 +41,16 @@ cp .env.example .env
 
 Open http://localhost:8000/accounts/signup/ (the preview config in `.claude/launch.json` uses port 8020 because 8000 is often taken) to create your first workspace. Emails (invites, password resets) print to the console.
 
+### Demo access
+
+Put `DEMO_EMAIL` and `DEMO_PASSWORD` (8+ characters) in `.env`, then:
+
+```bash
+.venv/Scripts/python manage.py seed_demo
+```
+
+It creates the **Demo Traders** workspace with three logins that all use `DEMO_PASSWORD`: `DEMO_EMAIL` (admin), `manager@<same domain>` and `agent@<same domain>`, plus sample companies, contacts, deals (won, lost, open), tasks, a team and a monthly target. Run it again any time; existing records are left alone (`--reset-password` sets the password again). In Docker: `docker compose exec web python manage.py seed_demo`. It refuses to run with `DEBUG` off unless you pass `--allow-production`.
+
 ## Run with Docker (Postgres + Redis + real Celery worker)
 
 ```bash
@@ -59,7 +69,55 @@ docker compose --profile ai up -d
 docker compose exec ollama ollama pull llama3.2:3b
 ```
 
+## Deploy to production
+
+One Linux server (2 vCPU / 4 GB is plenty to start) with Docker, and a domain whose DNS **A record** points at it.
+
+```bash
+git clone https://github.com/Rabbi-2529/automation_crm.git && cd automation_crm
+cp .env.prod.example .env.prod      # fill in every CHANGE-ME (see the comments for how to generate keys)
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec web python manage.py createsuperuser
+```
+
+Then sign up at `https://<your domain>/accounts/signup/` to create the first workspace.
+
+What runs (`docker-compose.prod.yml`): **caddy** (ports 80/443, gets and renews the HTTPS certificate, redirects HTTP), **web** (gunicorn, health-checked), **worker** + **beat** (Celery), **db** (Postgres 16) and **redis** on the internal network only, **migrate** (runs first on every deploy) and **backup**. The image compiles Tailwind and vendors every JS/CSS library at build time (`frontend/`), so production pages load nothing from CDNs except Google Fonts.
+
+To update: `git pull && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build`. Logs: `docker compose -f docker-compose.prod.yml logs -f web worker`.
+
+### Security in production (`config/settings/prod.py`)
+
+- Refuses to start without a long `SECRET_KEY`, `ALLOWED_HOSTS` and `FIELD_ENCRYPTION_KEY`. Keep a copy of `FIELD_ENCRYPTION_KEY` with your backups: without it saved SMTP/SMS/WhatsApp/AI keys can't be read.
+- HTTPS only: secure cookies, HSTS (1 year), `X-Frame-Options: DENY` (public web forms opt out so they can be embedded), nosniff, same-origin referrer. `manage.py check --deploy` passes (CI checks it).
+- **Login throttling**: 5 failed logins for one email from one IP lock that pair for 15 minutes (20 failures lock the IP); password-reset emails are limited to 5 an hour per IP. Counts live in Redis, shared by all workers.
+- The admin site lives at `ADMIN_URL`, not `/admin/`. Server errors are emailed to `ADMINS`.
+- Branded 400/403/404/429/500 pages that don't depend on the database or static files.
+
+### Backups
+
+The **backup** service dumps the database (`pg_dump`, custom format) and the uploaded files every night at `BACKUP_HOUR` into the `backups` volume and keeps `BACKUP_KEEP_DAYS` days. **System status** shows the latest backup and turns red if it's more than 36 hours old.
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec backup sh /backup.sh once      # back up now
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec backup sh /backup.sh list      # what's there
+```
+
+Copy backups off the server too (another machine or cloud storage), e.g. a nightly `docker cp thingbd-crm-backup-1:/backups ./crm-backups` from cron, or `rclone`.
+
+**Restore** (replaces the database):
+
+```bash
+docker compose -f docker-compose.prod.yml --env-file .env.prod stop web worker beat
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec backup sh /backup.sh restore crm-YYYYmmdd-HHMMSS.dump --yes
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+```
+
+Uploaded files: `tar -xzf media-….tgz` into the `media` volume. (On Git Bash for Windows, prefix `exec … /backup.sh` commands with `MSYS_NO_PATHCONV=1`.)
+
 ## Tests
+
+CI (`.github/workflows/ci.yml`) runs the tests, checks for missing migrations, runs `check --deploy` against the production settings and builds the production image on every push.
 
 ```bash
 .venv/Scripts/python manage.py test --settings=config.settings.test
@@ -82,6 +140,8 @@ apps/leads/        Web forms (public /f/<token>/, embeddable), lead scoring rule
 apps/campaigns/    Segments (SQL-evaluated conditions), sequences + enrollments, broadcasts + recipients
 apps/reports/      metrics.py (one Scope → KPIs, series, funnel, forecast, leaderboard), targets, scheduled report emails
 apps/integrations/ API keys + REST API (api/), outgoing webhooks, Facebook lead ads, iCalendar feed
+deploy/            Caddyfile and backup.sh for docker-compose.prod.yml
+frontend/          assets.json (every JS/CSS library, pinned), tailwind.css, build.mjs: the production image's front-end build
 apps/assistant/    AI help assistant + reply drafts: providers.py (OpenAI-compatible: Ollama/Groq/OpenRouter/…), help_articles.py
 static/js/ui.js    Select2 on every form select, AJAX pickers, DataTables (client + server side); static/css/ui.css themes them
 templates/         base + app/auth layouts, shared form partial

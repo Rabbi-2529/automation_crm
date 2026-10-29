@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{% block title %}{% endblock %} · ThingBD CRM</title>
+  {# Self-contained on purpose: error pages must render even when static files, the database or the CDN are down. #}
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #050505; color: #a19dab;
+           font: 16px/1.6 "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 440px; text-align: center; }
+    .mark { display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; background: #8b5cf6; color: #fff;
+            font-weight: 700; font-size: 24px; }
+    .code { margin: 24px 0 0; color: #8b5cf6; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; font-size: 13px; }
+    h1 { margin: 8px 0 12px; color: #fff; font-size: 28px; line-height: 1.25; }
+    a.button { display: inline-block; margin-top: 24px; padding: 10px 18px; border-radius: 8px; background: #7c3aed; color: #fff;
+               text-decoration: none; font-weight: 500; }
+    a.button:hover { background: #6d28d9; }
+  </style>
+</head>
+<body>
+  <main>
+    <span class="mark" aria-hidden="true">T</span>
+    <p class="code">{% block code %}{% endblock %}</p>
+    <h1>{% block heading %}{% endblock %}</h1>
+    <p>{% block message %}{% endblock %}</p>
+    <a class="button" href="/">Back to the dashboard</a>
+  </main>
+</body>
+</html>

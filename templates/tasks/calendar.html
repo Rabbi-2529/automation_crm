@@ -1,6 +1,6 @@
-{% extends "layouts/app.html" %}
+{% extends "layouts/app.html" %}{% load assets %}
 {% block title %}Calendar{% endblock %}
-{% block head %}<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>{% endblock %}
+{% block head %}<script src="{% asset 'fullcalendar' %}" defer></script>{% endblock %}
 {% block page_title %}Calendar{% endblock %}
 {% block page_actions %}
 <a href="{% url 'tasks:calendar_sync' %}" class="btn btn-secondary">Sync to Google Calendar</a>

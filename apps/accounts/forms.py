@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm, UserCreationForm
 
 from apps.orgs.forms import TIMEZONE_CHOICES
 
@@ -33,3 +33,40 @@ class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ["first_name", "last_name", "phone", "timezone"]
+
+
+class ThrottledLoginForm(AuthenticationForm):
+    """Refuses to check the password while this email/IP is locked out after too many failures."""
+
+    error_messages = {
+        **AuthenticationForm.error_messages,
+        "locked": "Too many failed attempts. Wait %(minutes)s minutes and try again, or reset your password.",
+    }
+
+    def clean(self):
+        from django.conf import settings
+
+        from . import throttle
+
+        email = (self.data.get("username") or "").strip().lower()
+        if throttle.login_locked(self.request, email):
+            raise forms.ValidationError(self.error_messages["locked"], code="locked",
+                                        params={"minutes": settings.LOGIN_LOCKOUT_MINUTES})
+        try:
+            cleaned = super().clean()
+        except forms.ValidationError:
+            throttle.record_failure(self.request, email)
+            raise
+        throttle.clear(self.request, email)
+        return cleaned
+
+
+class ThrottledPasswordResetForm(PasswordResetForm):
+    """Silently stops sending reset emails after a few requests per hour from one IP (the page looks the same)."""
+
+    def save(self, *args, request=None, **kwargs):
+        from . import throttle
+
+        if request is not None and not throttle.reset_allowed(request):
+            return
+        return super().save(*args, request=request, **kwargs)

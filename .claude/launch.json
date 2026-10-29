@@ -7,6 +7,13 @@
       "runtimeArgs": ["manage.py", "runserver", "8020", "--noreload"],
       "port": 8020,
       "autoPort": false
+    },
+    {
+      "name": "django-compiled",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-c", "import os, sys; os.environ['COMPILED_ASSETS'] = 'True'; sys.argv = ['manage.py', 'runserver', '8021', '--noreload']; exec(open('manage.py').read())"],
+      "port": 8021,
+      "autoPort": false
     }
   ]
 }

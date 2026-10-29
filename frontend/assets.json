@@ -1,0 +1,60 @@
+{
+  "_comment": "Front-end libraries. Dev loads the CDN URL; production images vendor npm package files into static/vendor/ (frontend/build.mjs). Keep versions in step with package.json.",
+  "tailwind_browser": "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11",
+  "libraries": {
+    "jquery": {
+      "cdn": "https://code.jquery.com/jquery-3.7.1.min.js",
+      "package": "jquery@3.7.1",
+      "file": "dist/jquery.min.js",
+      "vendor": "jquery.min.js"
+    },
+    "select2-js": {
+      "cdn": "https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/js/select2.min.js",
+      "package": "select2@4.1.0-rc.0",
+      "file": "dist/js/select2.min.js",
+      "vendor": "select2.min.js"
+    },
+    "select2-css": {
+      "cdn": "https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css",
+      "package": "select2@4.1.0-rc.0",
+      "file": "dist/css/select2.min.css",
+      "vendor": "select2.min.css"
+    },
+    "datatables-js": {
+      "cdn": "https://cdn.datatables.net/2.1.8/js/dataTables.min.js",
+      "package": "datatables.net@2.1.8",
+      "file": "js/dataTables.min.js",
+      "vendor": "dataTables.min.js"
+    },
+    "datatables-css": {
+      "cdn": "https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css",
+      "package": "datatables.net-dt@2.1.8",
+      "file": "css/dataTables.dataTables.min.css",
+      "vendor": "dataTables.dataTables.min.css"
+    },
+    "htmx": {
+      "cdn": "https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js",
+      "package": "htmx.org@2.0.4",
+      "file": "dist/htmx.min.js",
+      "vendor": "htmx.min.js"
+    },
+    "chartjs": {
+      "cdn": "https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js",
+      "package": "chart.js@4.4.4",
+      "file": "dist/chart.umd.js",
+      "vendor": "chart.umd.js"
+    },
+    "fullcalendar": {
+      "cdn": "https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js",
+      "package": "fullcalendar@6.1.15",
+      "file": "index.global.min.js",
+      "vendor": "fullcalendar.global.min.js"
+    },
+    "sortable": {
+      "cdn": "https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js",
+      "package": "sortablejs@1.15.2",
+      "file": "Sortable.min.js",
+      "vendor": "Sortable.min.js"
+    }
+  }
+}

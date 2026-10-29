@@ -15,5 +15,17 @@
     <span id="ping-spinner" class="htmx-indicator ml-2 text-sm text-slate-400">waiting for worker…</span>
     <div id="ping-result" class="mt-4"></div>
   </div>
+  <div class="card md:col-span-2">
+    <h2 class="font-semibold">Backups</h2>
+    {% if backup is None %}
+    <p class="mt-2 text-sm text-slate-600">Not set up on this server. The production stack (<code>docker-compose.prod.yml</code>) backs up the database and files every night.</p>
+    {% elif backup.latest %}
+    <p class="mt-2 text-sm">{% if backup.stale %}<span class="text-red-600">● Last backup is older than {{ stale_hours }} hours</span>{% else %}<span class="text-emerald-600">● Up to date</span>{% endif %}
+      · <code>{{ backup.latest }}</code> ({{ backup.size_mb }} MB) taken {{ backup.taken|timesince }} ago · {{ backup.count }} kept</p>
+    <p class="mt-1 text-xs text-slate-500">Also copy <code>{{ backup.folder }}</code> off this server regularly; see README → Backups.</p>
+    {% else %}
+    <p class="mt-2 text-sm text-red-600">● No backups found in <code>{{ backup.folder }}</code>. Check <code>docker compose logs backup</code>.</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

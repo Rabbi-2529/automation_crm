@@ -1,0 +1,21 @@
+{
+  "name": "thingbd-crm-frontend",
+  "private": true,
+  "description": "Builds compiled Tailwind CSS and vendored libraries for production images.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@tailwindcss/cli": "4.1.11",
+    "chart.js": "4.4.4",
+    "datatables.net": "2.1.8",
+    "datatables.net-dt": "2.1.8",
+    "fullcalendar": "6.1.15",
+    "htmx.org": "2.0.4",
+    "jquery": "3.7.1",
+    "select2": "4.1.0-rc.0",
+    "sortablejs": "1.15.2",
+    "tailwindcss": "4.1.11"
+  }
+}

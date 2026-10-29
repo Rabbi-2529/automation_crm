@@ -2,9 +2,17 @@
 __pycache__/
 *.pyc
 .env
+.env.*
+!.env.example
+!.env.prod.example
 db.sqlite3
 staticfiles/
 media/
 .coverage
 htmlcov/
 celerybeat-schedule*
+
+# Front-end build (made inside the Docker image; run `npm ci && npm run build` in frontend/ to try it locally)
+frontend/node_modules/
+static/vendor/
+static/css/app.css

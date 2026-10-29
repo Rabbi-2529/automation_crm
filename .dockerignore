@@ -6,3 +6,8 @@ __pycache__
 db.sqlite3
 staticfiles
 media
+frontend/node_modules
+static/vendor
+static/css/app.css
+backups
+.env.*

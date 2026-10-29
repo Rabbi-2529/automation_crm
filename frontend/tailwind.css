@@ -1,0 +1,29 @@
+/* Tailwind source for ThingBD CRM (build input, not served). Development: injected into the page for the browser
+   compiler by the {% tailwind %} tag. Production: compiled to static/css/app.css by frontend/build.mjs. */
+@import "tailwindcss";
+@source "../templates";
+@source "../apps";
+@source "../static/js";
+
+/* ThingBD brand (thingbd.com): violet #8B5CF6, near-black #050505 / #121118, Outfit. */
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50; }
+  .btn-primary { @apply bg-violet-600 text-white hover:bg-violet-700; }
+  .btn-secondary { @apply bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50; }
+  .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+  .card { @apply rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200; }
+  .form-stack input:not([type=checkbox]):not([type=radio]), .form-stack select, .form-stack textarea {
+    @apply mt-1 block w-full rounded-lg border-0 px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-300 focus:ring-2 focus:ring-violet-500 focus:outline-none;
+  }
+  .form-stack input[type=checkbox] { @apply h-4 w-4 rounded border-slate-300 text-violet-600; }
+  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
+  .table { @apply min-w-full divide-y divide-slate-200 text-sm; }
+  .table th { @apply px-4 py-3 text-left font-semibold text-slate-600; }
+  .table td { @apply px-4 py-3 text-slate-700; }
+  /* Public web forms */
+  .field { @apply mt-1 block w-full rounded-lg border-0 px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-300 focus:ring-2 focus:ring-violet-500 focus:outline-none; }
+}

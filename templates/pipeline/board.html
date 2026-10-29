@@ -1,7 +1,7 @@
-{% extends "layouts/app.html" %}
+{% extends "layouts/app.html" %}{% load assets %}
 {% load humanize %}
 {% block title %}Deals{% endblock %}
-{% block head %}<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js" defer></script>{% endblock %}
+{% block head %}<script src="{% asset 'sortable' %}" defer></script>{% endblock %}
 {% block page_title %}Deals{% endblock %}
 {% block page_actions %}
 <a href="{% url 'pipeline:deal_list' %}?pipeline={{ pipeline.pk }}" class="btn btn-secondary">List view</a>

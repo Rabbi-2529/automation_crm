@@ -177,6 +177,21 @@ SPECTACULAR_SETTINGS = {
     "SCHEMA_PATH_PREFIX": "/api/v1",
 }
 
+# Production builds compile Tailwind and serve vendored JS/CSS (see Dockerfile); dev uses the CDN builds.
+COMPILED_ASSETS = env.bool("COMPILED_ASSETS", default=False)
+
+# Where the backup service writes (docker-compose.prod.yml mounts it read-only into the app). Empty = not set up.
+BACKUP_DIR = env("BACKUP_DIR", default="")
+BACKUP_STALE_HOURS = env.int("BACKUP_STALE_HOURS", default=36)
+
+# Admin site path; change it in production so it isn't at the well-known /admin/.
+ADMIN_URL = env("ADMIN_URL", default="admin/").strip("/") + "/"
+
+# Login protection: this many failed logins for one email from one IP locks that pair for LOGIN_LOCKOUT_MINUTES;
+# 4x as many from one IP locks the IP.
+LOGIN_MAX_FAILURES = env.int("LOGIN_MAX_FAILURES", default=5)
+LOGIN_LOCKOUT_MINUTES = env.int("LOGIN_LOCKOUT_MINUTES", default=15)
+
 # AI assistant platform default. Workspaces can pick their own under Workspace → AI assistant.
 # Any OpenAI-compatible API works: Ollama (free, open-source, self-hosted), Groq, OpenRouter, LM Studio, OpenAI…
 # AI_PROVIDER: builtin | ollama | groq | openrouter | openai_compatible. Empty base URL/model = the provider's defaults.

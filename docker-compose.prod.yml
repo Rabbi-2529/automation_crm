@@ -1,0 +1,137 @@
+# Production stack for one server (VPS). Caddy gets and renews the HTTPS certificate for $DOMAIN automatically.
+#
+#   cp .env.prod.example .env.prod   # fill it in
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Only Caddy is reachable from outside (ports 80/443). Postgres and Redis stay on the internal network.
+name: thingbd-crm
+
+x-app: &app
+  build: .
+  image: thingbd-crm-app
+  env_file: .env.prod
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.prod
+    DATABASE_URL: postgres://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}@db:5432/${POSTGRES_DB:-crm}
+    CELERY_BROKER_URL: redis://redis:6379/0
+    CACHE_URL: redis://redis:6379/1
+    CELERY_TASK_ALWAYS_EAGER: "False"
+    BACKUP_DIR: /backups
+  volumes:
+    - media:/app/media
+    - backups:/backups:ro  # read-only: the System status page shows the latest backup
+  restart: unless-stopped
+
+x-after-migrate: &after-migrate
+  db:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+  migrate:
+    condition: service_completed_successfully
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    command: python manage.py migrate --noinput
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    <<: *app
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers ${WEB_WORKERS:-3} --timeout 120 --access-logfile -
+    depends_on: *after-migrate
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request; r=urllib.request.Request('http://127.0.0.1:8000/health/', headers={'Host': os.environ['DOMAIN'], 'X-Forwarded-Proto': 'https'}); urllib.request.urlopen(r, timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  worker:
+    <<: *app
+    command: celery -A config worker --loglevel=info --concurrency=${WORKER_CONCURRENCY:-2}
+    depends_on: *after-migrate
+
+  beat:
+    <<: *app
+    command: celery -A config beat --loglevel=info --schedule /tmp/celerybeat-schedule
+    depends_on: *after-migrate
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env.prod}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Nightly database + media backups into the `backups` volume, kept for BACKUP_KEEP_DAYS.
+  # Copy that folder off the server too (see README → Backups).
+  backup:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-crm}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.prod}
+      PGDATABASE: ${POSTGRES_DB:-crm}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_HOUR: ${BACKUP_HOUR:-2}
+      TZ: ${TZ:-Asia/Dhaka}
+    volumes:
+      - ./deploy/backup.sh:/backup.sh:ro
+      - backups:/backups
+      - media:/media:ro
+    entrypoint: ["sh", "/backup.sh", "loop"]
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully  # so the first backup isn't of an empty database
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  media:
+  backups:
+  caddydata:
+  caddyconfig:

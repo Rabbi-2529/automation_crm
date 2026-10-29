@@ -2,6 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path, reverse_lazy
 
 from . import views
+from .forms import ThrottledLoginForm, ThrottledPasswordResetForm
 
 app_name = "accounts"
 
@@ -9,7 +10,8 @@ urlpatterns = [
     path("signup/", views.SignupView.as_view(), name="signup"),
     path(
         "login/",
-        auth_views.LoginView.as_view(template_name="accounts/login.html", redirect_authenticated_user=True),
+        auth_views.LoginView.as_view(template_name="accounts/login.html", redirect_authenticated_user=True,
+                                     authentication_form=ThrottledLoginForm),
         name="login",
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
@@ -30,6 +32,7 @@ urlpatterns = [
         "password/reset/",
         auth_views.PasswordResetView.as_view(
             template_name="accounts/password_reset_form.html",
+            form_class=ThrottledPasswordResetForm,
             email_template_name="accounts/emails/password_reset.txt",
             subject_template_name="accounts/emails/password_reset_subject.txt",
             success_url=reverse_lazy("accounts:password_reset_done"),
