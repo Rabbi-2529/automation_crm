@@ -1,0 +1,19 @@
+{% extends "layouts/app.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Welcome, {{ request.user.display_name }}{% endblock %}
+{% block content %}
+<div class="grid gap-4 sm:grid-cols-3">
+  <div class="card"><p class="text-sm text-slate-500">Workspace</p><p class="mt-1 text-lg font-semibold">{{ current_org.name }}</p><p class="text-xs text-slate-400">{{ current_org.timezone }} · {{ current_org.currency }}</p></div>
+  <div class="card"><p class="text-sm text-slate-500">Active members</p><p class="mt-1 text-3xl font-semibold">{{ member_count }}</p></div>
+  <div class="card"><p class="text-sm text-slate-500">Teams</p><p class="mt-1 text-3xl font-semibold">{{ team_count }}</p>
+    <p class="text-xs text-slate-400">You're in: {% for t in my_teams %}{{ t.name }}{% if not forloop.last %}, {% endif %}{% empty %}none yet{% endfor %}</p></div>
+</div>
+
+<div class="card mt-6">
+  <h2 class="font-semibold">Roadmap</h2>
+  <ol class="mt-4 space-y-2 text-sm">
+    <li class="flex gap-3"><span class="badge bg-emerald-100 text-emerald-700">Phase 0</span> Foundation: auth, workspaces, roles, teams, background jobs <span class="text-emerald-600">✓</span></li>
+    {% for phase, text in roadmap %}<li class="flex gap-3"><span class="badge bg-slate-100 text-slate-600">{{ phase }}</span> {{ text }}</li>{% endfor %}
+  </ol>
+</div>
+{% endblock %}

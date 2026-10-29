@@ -1,0 +1,13 @@
+{% extends "layouts/app.html" %}
+{% block title %}Invite member{% endblock %}
+{% block page_title %}Invite a member{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-lg space-y-6">{% csrf_token %}
+  <p class="text-sm text-slate-500">New people get an email with a link to set their password. Existing users are added straight away.</p>
+  {% include "partials/form.html" %}
+  <div class="flex justify-between">
+    <a href="{% url 'orgs:members' %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-primary">Send invite</button>
+  </div>
+</form>
+{% endblock %}

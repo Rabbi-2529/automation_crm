@@ -1,0 +1,6 @@
+{# Args: label, href, match (substring of the current url_name that marks this link active), soon (phase label) #}
+{% if soon %}
+<span class="flex items-center justify-between rounded-lg px-3 py-2 text-slate-500" title="Coming in {{ soon }}">{{ label }} <span class="text-[10px] uppercase">{{ soon }}</span></span>
+{% else %}
+<a href="{{ href }}" class="block rounded-lg px-3 py-2 {% if match and match in url_name %}bg-slate-800 text-white{% else %}hover:bg-slate-800 hover:text-white{% endif %}">{{ label }}</a>
+{% endif %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block body %}
+<main class="flex min-h-full items-center justify-center px-4 py-12">
+  <div class="w-full max-w-md">
+    <a href="/" class="mb-8 flex items-center justify-center gap-2 text-xl font-semibold text-slate-900">
+      <span class="grid h-9 w-9 place-items-center rounded-lg bg-indigo-600 text-white">⚡</span> Automation CRM
+    </a>
+    {% include "partials/messages.html" %}
+    <div class="card">
+      {% block content %}{% endblock %}
+    </div>
+    {% block below_card %}{% endblock %}
+  </div>
+</main>
+{% endblock %}

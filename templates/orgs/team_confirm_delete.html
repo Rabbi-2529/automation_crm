@@ -1,0 +1,12 @@
+{% extends "layouts/app.html" %}
+{% block title %}Delete team{% endblock %}
+{% block page_title %}Delete {{ object.name }}?{% endblock %}
+{% block content %}
+<form method="post" class="card max-w-lg space-y-6">{% csrf_token %}
+  <p class="text-sm text-slate-600">The team is removed. Its members stay in the organization.</p>
+  <div class="flex justify-between">
+    <a href="{% url 'orgs:team_edit' object.pk %}" class="btn btn-secondary">Cancel</a>
+    <button class="btn btn-danger">Delete team</button>
+  </div>
+</form>
+{% endblock %}

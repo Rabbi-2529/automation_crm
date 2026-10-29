@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block body %}
+{% with url_name=request.resolver_match.url_name ns=request.resolver_match.namespace %}
+<div class="flex min-h-full">
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-slate-900 text-slate-300 lg:flex">
+    <div class="flex h-16 items-center gap-2 px-6 text-lg font-semibold text-white">
+      <span class="grid h-8 w-8 place-items-center rounded-lg bg-indigo-600">⚡</span> Automation CRM
+    </div>
+    <nav class="flex-1 space-y-1 px-3 py-4 text-sm">
+      {% include "partials/nav_link.html" with href="/" label="Dashboard" match="dashboard" %}
+      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">CRM</p>
+      {% include "partials/nav_link.html" with label="Contacts" soon="Phase 1" %}
+      {% include "partials/nav_link.html" with label="Deals" soon="Phase 2" %}
+      {% include "partials/nav_link.html" with label="Inbox" soon="Phase 3" %}
+      {% include "partials/nav_link.html" with label="Automations" soon="Phase 4" %}
+      {% include "partials/nav_link.html" with label="Reports" soon="Phase 6" %}
+      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Workspace</p>
+      {% url "orgs:teams" as teams_url %}
+      {% include "partials/nav_link.html" with href=teams_url label="Teams" match="team" %}
+      {% if current_membership.is_manager %}
+        {% url "orgs:members" as members_url %}
+        {% include "partials/nav_link.html" with href=members_url label="Members" match="member" %}
+      {% endif %}
+      {% if current_membership.is_admin %}
+        {% url "orgs:settings" as settings_url %}
+        {% include "partials/nav_link.html" with href=settings_url label="Settings" match="settings" %}
+        {% url "core:system" as system_url %}
+        {% include "partials/nav_link.html" with href=system_url label="System status" match="system" %}
+      {% endif %}
+    </nav>
+    <div class="border-t border-slate-800 p-4 text-xs text-slate-500">Signed in as {{ request.user.email }}</div>
+  </aside>
+
+  <div class="flex min-h-full flex-1 flex-col lg:pl-64">
+    <header class="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
+      <button type="button" class="btn-secondary btn px-2 py-1 lg:hidden" onclick="document.getElementById('sidebar').classList.toggle('hidden'); document.getElementById('sidebar').classList.toggle('flex');" aria-label="Toggle menu">☰</button>
+
+      <details class="relative">
+        <summary class="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium hover:bg-slate-100">
+          {{ current_org.name }} <span class="badge bg-slate-100 text-slate-600">{{ current_membership.get_role_display }}</span> ▾
+        </summary>
+        <div class="absolute left-0 mt-2 w-64 rounded-lg bg-white p-2 shadow-lg ring-1 ring-slate-200">
+          {% for m in user_memberships %}
+            <form method="post" action="{% url 'orgs:switch' m.org_id %}">{% csrf_token %}
+              <button class="w-full rounded px-3 py-2 text-left text-sm hover:bg-slate-100 {% if m.org_id == current_org.pk %}font-semibold text-indigo-600{% endif %}">{{ m.org.name }}</button>
+            </form>
+          {% endfor %}
+          <a href="{% url 'orgs:create' %}" class="mt-1 block border-t border-slate-100 px-3 py-2 text-sm text-indigo-600 hover:bg-slate-50">+ New workspace</a>
+        </div>
+      </details>
+
+      <div class="ml-auto flex items-center gap-3">
+        <details class="relative">
+          <summary class="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700">{{ request.user.initials }}</summary>
+          <div class="absolute right-0 mt-2 w-48 rounded-lg bg-white p-2 text-sm shadow-lg ring-1 ring-slate-200">
+            <a href="{% url 'accounts:profile' %}" class="block rounded px-3 py-2 hover:bg-slate-100">Profile</a>
+            <a href="{% url 'accounts:password_change' %}" class="block rounded px-3 py-2 hover:bg-slate-100">Change password</a>
+            <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}
+              <button class="w-full rounded px-3 py-2 text-left text-red-600 hover:bg-red-50">Log out</button>
+            </form>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <main class="flex-1 px-4 py-8 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-6xl">
+        {% include "partials/messages.html" %}
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <h1 class="text-2xl font-semibold text-slate-900">{% block page_title %}{% endblock %}</h1>
+          <div class="flex gap-2">{% block page_actions %}{% endblock %}</div>
+        </div>
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

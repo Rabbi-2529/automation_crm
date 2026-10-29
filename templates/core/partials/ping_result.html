@@ -1,0 +1,5 @@
+{% if ok %}
+<p class="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 ring-1 ring-emerald-200">Worker answered from <code>{{ result.host }}</code> at {{ result.at }}</p>
+{% else %}
+<p class="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 ring-1 ring-red-200">No answer: {{ error }}</p>
+{% endif %}

@@ -1,0 +1,27 @@
+{% extends "layouts/app.html" %}
+{% block title %}Teams{% endblock %}
+{% block page_title %}Teams{% endblock %}
+{% block page_actions %}
+{% if current_membership.is_manager %}<a href="{% url 'orgs:team_create' %}" class="btn btn-primary">+ New team</a>{% endif %}
+{% endblock %}
+{% block content %}
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {% for team in teams %}
+  <div class="card">
+    <div class="flex items-start justify-between gap-2">
+      <h2 class="font-semibold text-slate-900">{{ team.name }}</h2>
+      {% if current_membership.is_manager %}<a href="{% url 'orgs:team_edit' team.pk %}" class="text-sm text-indigo-600 hover:underline">Edit</a>{% endif %}
+    </div>
+    {% if team.description %}<p class="mt-1 text-sm text-slate-500">{{ team.description }}</p>{% endif %}
+    <p class="mt-4 text-xs uppercase tracking-wide text-slate-400">Lead</p>
+    <p class="text-sm">{{ team.lead.user.display_name|default:"—" }}</p>
+    <p class="mt-3 text-xs uppercase tracking-wide text-slate-400">Members ({{ team.members.all|length }})</p>
+    <div class="mt-2 flex flex-wrap gap-1">
+      {% for m in team.members.all %}<span class="badge bg-slate-100 text-slate-700">{{ m.user.display_name }}</span>{% empty %}<span class="text-sm text-slate-400">No members yet</span>{% endfor %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="card col-span-full text-center text-sm text-slate-500">No teams yet.{% if current_membership.is_manager %} Create one to group your sales reps.{% endif %}</div>
+  {% endfor %}
+</div>
+{% endblock %}

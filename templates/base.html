@@ -1,0 +1,32 @@
+{% load static %}<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Automation CRM{% endblock %} · Automation CRM</title>
+  {# CDN builds for now; Phase 8 replaces these with a compiled Tailwind file and vendored HTMX. #}
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" defer></script>
+  <style type="text/tailwindcss">
+    @layer components {
+      .btn { @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50; }
+      .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
+      .btn-secondary { @apply bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50; }
+      .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+      .card { @apply rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200; }
+      .form-stack input:not([type=checkbox]):not([type=radio]), .form-stack select, .form-stack textarea {
+        @apply mt-1 block w-full rounded-lg border-0 px-3 py-2 text-sm text-slate-900 ring-1 ring-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none;
+      }
+      .form-stack input[type=checkbox] { @apply h-4 w-4 rounded border-slate-300 text-indigo-600; }
+      .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
+      .table { @apply min-w-full divide-y divide-slate-200 text-sm; }
+      .table th { @apply px-4 py-3 text-left font-semibold text-slate-600; }
+      .table td { @apply px-4 py-3 text-slate-700; }
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="h-full bg-slate-50 text-slate-800 antialiased" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+  {% block body %}{% endblock %}
+</body>
+</html>

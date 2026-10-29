@@ -1,0 +1,19 @@
+{% extends "layouts/app.html" %}
+{% block title %}System status{% endblock %}
+{% block page_title %}System status{% endblock %}
+{% block content %}
+<div class="grid gap-4 md:grid-cols-2">
+  <div class="card">
+    <h2 class="font-semibold">Database</h2>
+    <p class="mt-2 text-sm">{% if db_ok %}<span class="text-emerald-600">● Connected</span> ({{ db_detail }}){% else %}<span class="text-red-600">● Error</span> {{ db_detail }}{% endif %}</p>
+  </div>
+  <div class="card">
+    <h2 class="font-semibold">Background jobs (Celery)</h2>
+    <p class="mt-2 text-sm text-slate-600">Broker: <code>{{ broker }}</code></p>
+    {% if eager %}<p class="mt-1 text-sm text-amber-600">Eager mode is on: tasks run inline, no worker needed. Docker Compose turns this off.</p>{% endif %}
+    <button class="btn btn-secondary mt-4" hx-post="{% url 'core:system_ping' %}" hx-target="#ping-result" hx-indicator="#ping-spinner">Run test task</button>
+    <span id="ping-spinner" class="htmx-indicator ml-2 text-sm text-slate-400">waiting for worker…</span>
+    <div id="ping-result" class="mt-4"></div>
+  </div>
+</div>
+{% endblock %}

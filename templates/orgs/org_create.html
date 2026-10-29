@@ -1,0 +1,13 @@
+{% extends "layouts/auth.html" %}
+{% block title %}New workspace{% endblock %}
+{% block content %}
+<h1 class="text-xl font-semibold">New workspace</h1>
+<p class="mb-6 mt-1 text-sm text-slate-500">Each workspace has its own contacts, deals and automations. You'll be its admin.</p>
+<form method="post" class="space-y-6">{% csrf_token %}
+  {% include "partials/form.html" %}
+  <div class="flex justify-between">
+    {% if request.membership %}<a href="{% url 'core:dashboard' %}" class="btn btn-secondary">Cancel</a>{% else %}<span></span>{% endif %}
+    <button class="btn btn-primary">Create workspace</button>
+  </div>
+</form>
+{% endblock %}

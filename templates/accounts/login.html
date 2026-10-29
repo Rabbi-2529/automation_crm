@@ -1,0 +1,16 @@
+{% extends "layouts/auth.html" %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<h1 class="mb-6 text-xl font-semibold">Log in</h1>
+<form method="post" class="space-y-6">{% csrf_token %}
+  {% include "partials/form.html" %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <div class="flex items-center justify-between">
+    <a href="{% url 'accounts:password_reset' %}" class="text-sm text-indigo-600 hover:underline">Forgot password?</a>
+    <button class="btn btn-primary">Log in</button>
+  </div>
+</form>
+{% endblock %}
+{% block below_card %}
+<p class="mt-6 text-center text-sm text-slate-600">New here? <a href="{% url 'accounts:signup' %}" class="font-medium text-indigo-600 hover:underline">Create a workspace</a></p>
+{% endblock %}
