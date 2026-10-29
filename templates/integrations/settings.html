@@ -1,0 +1,164 @@
+{% extends "layouts/app.html" %}
+{% block title %}Integrations{% endblock %}
+{% block page_title %}Integrations{% endblock %}
+{% block page_actions %}
+{% if tab == "webhooks" %}<a href="{% url 'integrations:webhook_create' %}" class="btn btn-primary">+ Add webhook</a>
+{% elif tab == "facebook" %}<a href="{% url 'integrations:facebook_page_create' %}" class="btn btn-primary">+ Connect a page</a>
+{% elif tab == "api" %}<a href="{{ docs_url }}" target="_blank" rel="noopener" class="btn btn-secondary">API docs ↗</a>{% endif %}
+{% endblock %}
+{% block content %}
+<nav class="mb-6 inline-flex rounded-lg bg-white p-1 text-sm ring-1 ring-slate-200">
+  {% for key, label in tabs %}
+  <a href="?tab={{ key }}" class="rounded-md px-4 py-1.5 {% if tab == key %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">{{ label }}</a>
+  {% endfor %}
+</nav>
+
+{% if tab == "api" %}
+{% if new_key %}
+<div class="mb-6 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900 ring-1 ring-emerald-200">
+  <p class="font-semibold">API key “{{ new_key_obj.name }}” created. Copy it now; it won't be shown again.</p>
+  <div class="mt-2 flex flex-wrap items-center gap-2">
+    <code id="new-key" class="break-all rounded bg-white px-3 py-2 text-xs ring-1 ring-emerald-200">{{ new_key }}</code>
+    <button type="button" class="btn btn-secondary" data-copy="#new-key">Copy</button>
+  </div>
+</div>
+{% endif %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="card overflow-x-auto p-0 lg:col-span-2">
+    <table class="table">
+      <thead class="bg-slate-50"><tr><th>Name</th><th>Key</th><th>Access</th><th>Acts as</th><th>Last used</th><th></th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for key in keys %}
+        <tr class="{% if not key.is_active %}text-slate-400{% endif %}">
+          <td class="font-medium">{{ key.name }}</td>
+          <td><code class="text-xs">{{ key.prefix }}_…</code></td>
+          <td>{{ key.get_scope_display }}</td>
+          <td>{{ key.created_by.display_name }}</td>
+          <td>{% if key.last_used_at %}{{ key.last_used_at|timesince }} ago{% else %}Never{% endif %}</td>
+          <td class="text-right">
+            {% if key.is_active %}
+            <form method="post" action="{% url 'integrations:api_key_revoke' key.pk %}" onsubmit="return confirm('Revoke this key? Anything using it stops working immediately.')">{% csrf_token %}
+              <button class="text-sm text-red-600 hover:underline">Revoke</button></form>
+            {% else %}<span class="badge bg-slate-100 text-slate-500">Revoked {{ key.revoked_at|date:"d M Y" }}</span>{% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="py-10 text-center text-sm text-slate-500">No API keys yet. Create one to connect your website, Zapier/Make or another system.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <aside class="space-y-6 text-sm">
+    <form method="post" action="{% url 'integrations:api_key_create' %}" class="card space-y-4">{% csrf_token %}
+      <h2 class="font-semibold">New API key</h2>
+      {% include "partials/form.html" with form=key_form %}
+      <button class="btn btn-primary w-full">Create key</button>
+      <p class="text-xs text-slate-500">The key acts as you: your role, and your name on the timeline. It stops working if you leave the workspace.</p>
+    </form>
+    <div class="card text-slate-600">
+      <h2 class="font-semibold text-slate-900">Quick start</h2>
+      <pre class="mt-2 overflow-x-auto rounded bg-slate-900 p-3 text-xs text-slate-100">curl {{ api_base }}contacts/upsert/ \
+  -H "Authorization: Bearer tbd_…" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "rahim@example.com",
+       "first_name": "Rahim",
+       "tags": ["Website"]}'</pre>
+      <p class="mt-2">Contacts, companies, deals, tasks, notes and the timeline. Changes made through the API show on the timeline and start your automations, just like changes in the app. Limit: {{ rate_limit }} per key.</p>
+    </div>
+  </aside>
+</div>
+
+{% elif tab == "webhooks" %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="card overflow-x-auto p-0 lg:col-span-2">
+    <table class="table">
+      <thead class="bg-slate-50"><tr><th>Endpoint</th><th>Events</th><th>Status</th><th>Last delivery</th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for e in endpoints %}
+        <tr>
+          <td><a href="{% url 'integrations:webhook_detail' e.pk %}" class="font-medium text-violet-700 hover:underline">{{ e.description|default:e.url|truncatechars:60 }}</a>
+            {% if e.description %}<div class="text-xs text-slate-500">{{ e.url|truncatechars:70 }}</div>{% endif %}</td>
+          <td>{% if e.events %}{{ e.events|length }} event{{ e.events|length|pluralize }}{% else %}All events{% endif %}</td>
+          <td>{% if e.is_active %}<span class="badge bg-emerald-100 text-emerald-700">Active</span>{% if e.consecutive_failures %} <span class="text-xs text-amber-700">{{ e.consecutive_failures }} failing</span>{% endif %}
+              {% else %}<span class="badge bg-slate-100 text-slate-600" title="{{ e.disabled_reason }}">Off</span>{% endif %}</td>
+          <td>{% if e.last_delivery_at %}{{ e.last_delivery_at|timesince }} ago{% else %}—{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="py-10 text-center text-sm text-slate-500">No webhooks yet. Add one to push CRM events (new contacts, won deals, replies…) to another system as they happen.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <aside class="card space-y-3 text-sm text-slate-600">
+    <h2 class="font-semibold text-slate-900">How webhooks work</h2>
+    <ul class="list-disc space-y-1 pl-5">
+      <li>Each timeline event you pick is POSTed as JSON, with the contact / deal / company in the same shape as the REST API.</li>
+      <li>Every request is signed: <code class="text-xs">X-ThingBD-Signature: t=…,v1=…</code> is HMAC-SHA256 of <code class="text-xs">t + "." + body</code> with the endpoint's secret.</li>
+      <li>Reply with any 2xx. Failures are retried after 1 min, 5 min, 30 min, 2 h and 6 h; an endpoint that fails 50 times in a row is switched off.</li>
+      <li>Need logic first? Use the <em>Call a webhook</em> step inside an automation instead.</li>
+    </ul>
+  </aside>
+</div>
+
+{% else %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="space-y-6 lg:col-span-2">
+    <div class="card overflow-x-auto p-0">
+      <table class="table">
+        <thead class="bg-slate-50"><tr><th>Page</th><th>Page ID</th><th>Leads</th><th>Last lead</th><th></th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for p in pages %}
+          <tr><td class="font-medium">{{ p.name }}{% if not p.is_active %} <span class="badge bg-slate-100 text-slate-500">Paused</span>{% endif %}</td>
+            <td><code class="text-xs">{{ p.page_id }}</code></td><td>{{ p.lead_count }}</td>
+            <td>{% if p.last_lead_at %}{{ p.last_lead_at|timesince }} ago{% else %}—{% endif %}</td>
+            <td class="text-right"><a href="{% url 'integrations:facebook_page_edit' p.pk %}" class="text-sm text-violet-600 hover:underline">Edit</a></td></tr>
+          {% empty %}
+          <tr><td colspan="5" class="py-8 text-center text-sm text-slate-500">No pages connected yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card overflow-x-auto p-0">
+      <h2 class="border-b border-slate-100 px-4 py-3 font-semibold">Recent leads</h2>
+      <table class="table">
+        <thead class="bg-slate-50"><tr><th>Received</th><th>Page</th><th>Form</th><th>Contact</th><th>Status</th></tr></thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for lead in leads %}
+          <tr><td>{{ lead.created_at|date:"d M, H:i" }}</td><td>{{ lead.page.name }}</td><td>{{ lead.form_name|default:lead.form_id|default:"—" }}</td>
+            <td>{% if lead.contact %}<a href="{% url 'contacts:contact_detail' lead.contact.pk %}" class="text-violet-600 hover:underline">{{ lead.contact.display_name }}</a>{% if lead.created_contact %} <span class="badge bg-violet-100 text-violet-700">New</span>{% endif %}{% else %}—{% endif %}</td>
+            <td>{% if lead.status == "imported" %}<span class="badge bg-emerald-100 text-emerald-700">Imported</span>
+              {% else %}<span class="badge {% if lead.status == 'failed' %}bg-red-100 text-red-700{% else %}bg-slate-100 text-slate-600{% endif %}" title="{{ lead.error }}">{{ lead.get_status_display }}</span>
+              <form method="post" action="{% url 'integrations:facebook_lead_retry' lead.pk %}" class="inline">{% csrf_token %}<button class="text-xs text-violet-600 hover:underline">retry</button></form>
+              {% if lead.error %}<div class="mt-1 max-w-xs text-xs text-red-600">{{ lead.error|truncatechars:120 }}</div>{% endif %}{% endif %}</td></tr>
+          {% empty %}
+          <tr><td colspan="5" class="py-8 text-center text-sm text-slate-500">Leads appear here as soon as someone submits one of your lead ad forms.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <aside class="space-y-6 text-sm">
+    <form method="post" action="{% url 'integrations:facebook_settings' %}" class="card space-y-4">{% csrf_token %}
+      <h2 class="font-semibold">Lead settings</h2>
+      {% include "partials/form.html" with form=fb_form %}
+      <button class="btn btn-primary w-full">Save</button>
+    </form>
+    <div class="card">
+      <h2 class="font-semibold">Webhook</h2>
+      <p class="mt-2 text-slate-600">In your Meta app → Webhooks → <strong>Page</strong>, subscribe to <em>leadgen</em> with:</p>
+      <dl class="mt-2 space-y-2 text-xs">
+        <div><dt class="text-slate-500">Callback URL</dt><dd><code class="block break-all rounded bg-slate-100 p-2">{{ fb_webhook }}</code></dd></div>
+        <div><dt class="text-slate-500">Verify token</dt><dd><code class="block break-all rounded bg-slate-100 p-2">{{ fb.verify_token }}</code></dd></div>
+      </dl>
+      <p class="mt-2 text-xs text-slate-500">Then subscribe the app to each page and check it with Meta's Lead Ads Testing tool. Answers named email, phone_number, full_name, first_name, last_name, company_name and job_title fill the contact; questions with the same key as a custom field fill that field; the rest go into a note.</p>
+    </div>
+  </aside>
+</div>
+{% endif %}
+<script>
+  document.querySelectorAll("[data-copy]").forEach(btn => btn.addEventListener("click", () => {
+    navigator.clipboard.writeText(document.querySelector(btn.dataset.copy).textContent.trim());
+    btn.textContent = "Copied";
+  }));
+</script>
+{% endblock %}

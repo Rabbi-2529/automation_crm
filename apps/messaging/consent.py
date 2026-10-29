@@ -32,16 +32,22 @@ def contact_from_token(token):
     return Contact.objects.filter(pk=data.get("c"), org_id=data.get("o")).first()
 
 
+OPT_OUT_FIELDS = {Channel.EMAIL: "email_opt_out", Channel.SMS: "sms_opt_out", Channel.WHATSAPP: "whatsapp_opt_out"}
+
+
+def is_opted_out(contact, channel):
+    return getattr(contact, OPT_OUT_FIELDS[channel])
+
+
 def can_message(contact, channel):
     if contact is None:
         return False
-    if channel == Channel.EMAIL:
-        return bool(contact.email) and not contact.email_opt_out
-    return bool(contact.phone) and not contact.sms_opt_out
+    address = contact.email if channel == Channel.EMAIL else contact.phone
+    return bool(address) and not is_opted_out(contact, channel)
 
 
 def opt_out(contact, channel, how):
-    field = "email_opt_out" if channel == Channel.EMAIL else "sms_opt_out"
+    field = OPT_OUT_FIELDS[channel]
     if getattr(contact, field):
         return False
     setattr(contact, field, True)
@@ -53,7 +59,7 @@ def opt_out(contact, channel, how):
 
 
 def opt_in(contact, channel, how):
-    field = "email_opt_out" if channel == Channel.EMAIL else "sms_opt_out"
+    field = OPT_OUT_FIELDS[channel]
     if not getattr(contact, field):
         return False
     setattr(contact, field, False)

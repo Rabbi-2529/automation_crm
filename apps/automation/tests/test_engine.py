@@ -232,7 +232,7 @@ class ActionTests(AutomationTestCase):
 
     def test_webhook_signed_and_ssrf_blocked(self):
         self.workflow("contact_created", [("webhook", {"url": "https://hooks.example.com/crm"})])
-        with mock.patch("apps.automation.actions.socket.getaddrinfo", return_value=[(None, None, None, None, ("93.184.216.34", 0))]), \
+        with mock.patch("apps.core.net.socket.getaddrinfo", return_value=[(None, None, None, None, ("93.184.216.34", 0))]), \
              mock.patch("apps.automation.actions.requests.post") as post:
             post.return_value = mock.Mock(status_code=200)
             self.create_contact_via_ui(first_name="Rahim", email="rahim@x.test")
@@ -244,7 +244,7 @@ class ActionTests(AutomationTestCase):
         self.assertEqual(post.call_args.kwargs["headers"]["X-ThingBD-Signature"], f"sha256={expected}")
 
         WorkflowRun.objects.all().delete()
-        with mock.patch("apps.automation.actions.socket.getaddrinfo", return_value=[(None, None, None, None, ("10.0.0.5", 0))]), \
+        with mock.patch("apps.core.net.socket.getaddrinfo", return_value=[(None, None, None, None, ("10.0.0.5", 0))]), \
              mock.patch("apps.automation.actions.requests.post") as post:
             self.create_contact_via_ui(first_name="Karim")
         post.assert_not_called()

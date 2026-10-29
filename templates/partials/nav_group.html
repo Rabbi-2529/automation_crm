@@ -1,0 +1,7 @@
+{# Opening tag of a collapsible sidebar group. Args: key, label, alert (show a dot while closed). Close with </div></details>. #}
+<details class="group/nav" data-nav-group="{{ key }}">
+  <summary class="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6] hover:bg-[#121118] [&::-webkit-details-marker]:hidden">
+    <span class="flex items-center gap-2">{{ label }}{% if alert %}<span class="h-1.5 w-1.5 rounded-full bg-red-500 group-open/nav:hidden" title="Something needs attention"></span>{% endif %}</span>
+    <svg class="h-4 w-4 transition-transform group-open/nav:rotate-180" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+  </summary>
+  <div class="mt-1 space-y-1 border-l border-white/10 pl-2 ml-3">

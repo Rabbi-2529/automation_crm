@@ -42,11 +42,13 @@ def _dispatch(activity):
     """After-commit hooks. Each one is cheap when its feature isn't in use (it checks before queueing work)."""
     from apps.automation.events import dispatch as automation
     from apps.campaigns.engine import dispatch as sequences
+    from apps.integrations.webhooks import dispatch as webhooks
     from apps.leads.scoring import dispatch as scoring
 
     sequences(activity)  # replies/unsubscribes stop sequences first
     scoring(activity)
     automation(activity)
+    webhooks(activity)
 
 
 def snapshot(instance, fields):

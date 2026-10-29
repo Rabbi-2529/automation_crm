@@ -24,6 +24,7 @@ from .models import (
 )
 from .rendering import build_context, render
 from .sms import normalize_phone, send_sms
+from .whatsapp import send_whatsapp
 
 REPLY_PREFIX = re.compile(r"^\s*((re|fwd?|aw)\s*:\s*)+", re.IGNORECASE)
 
@@ -42,6 +43,10 @@ def compose(*, org, user, channel, to_address, body, subject="", contact=None, d
     """
     values = build_context(org=org, user=user, contact=contact, deal=deal)
     body, subject = render(body, values), render(subject, values)
+    meta = {}
+    if channel == Channel.WHATSAPP and template is not None and template.whatsapp_template:
+        params = [render(line, values).strip() for line in template.whatsapp_params.splitlines() if line.strip()]
+        meta = {"wa_template": template.whatsapp_template, "wa_language": template.whatsapp_language or "en", "wa_params": params}
     if marketing and channel == Channel.SMS and ChannelSettings.for_org(org).sms_opt_out_footer:
         body = f"{body}\nReply STOP to opt out"
     if reply_to is not None:
@@ -55,7 +60,7 @@ def compose(*, org, user, channel, to_address, body, subject="", contact=None, d
     message = Message.objects.create(
         org=org, conversation=conversation, channel=channel, direction=Direction.OUTBOUND, status=MessageStatus.QUEUED,
         contact=contact, deal=deal, template=template, sent_by=user, to_address=to_address, subject=subject[:255],
-        body_text=body, is_marketing=marketing,
+        body_text=body, is_marketing=marketing, meta=meta,
         message_id=email_backend.new_message_id(ChannelSettings.for_org(org)) if channel == Channel.EMAIL else "",
         in_reply_to=(reply_to.message_id if reply_to is not None else ""),
     )
@@ -76,6 +81,9 @@ def deliver(message):
     try:
         if message.channel == Channel.EMAIL:
             email_backend.send_email(message)
+        elif message.channel == Channel.WHATSAPP:
+            message.provider_ref = send_whatsapp(ChannelSettings.for_org(message.org), message.to_address, message.body_text,
+                                                 message.meta)
         else:
             message.provider_ref = send_sms(ChannelSettings.for_org(message.org), message.to_address, message.body_text)
     except Exception as exc:  # noqa: BLE001 - any provider/SMTP failure is shown to the user, not raised
@@ -93,6 +101,8 @@ def deliver(message):
     message.save(update_fields=["status", "sent_at", "error", "body_html", "from_address", "provider_ref", "updated_at"])
     if message.channel == Channel.EMAIL:
         kind, summary = ActivityKind.EMAIL_SENT, f"Email sent: {message.subject or _excerpt(message.body_text, 60)}"
+    elif message.channel == Channel.WHATSAPP:
+        kind, summary = ActivityKind.WHATSAPP_SENT, f"WhatsApp sent: {_excerpt(message.body_text, 80)}"
     else:
         kind, summary = ActivityKind.SMS_SENT, f"SMS sent: {_excerpt(message.body_text, 80)}"
     record(org=message.org, kind=kind, actor=message.sent_by, contact=message.contact, deal=message.deal,
@@ -166,21 +176,22 @@ def ingest_email(org, raw_bytes):
 
 
 @transaction.atomic
-def ingest_sms(org, from_number, body, provider_ref=""):
+def ingest_sms(org, from_number, body, provider_ref="", channel=Channel.SMS):
+    """Stores one received SMS or WhatsApp message (same phone-number matching). STOP/START update that channel's opt-out."""
     if provider_ref and Message.objects.filter(org=org, provider_ref=provider_ref).exists():
         return None
     number = normalize_phone(from_number)
     tail = number[-10:]
     contact = Contact.objects.for_org(org).filter(phone_digits__endswith=tail).first() if len(tail) >= 7 else None
     conversation = (
-        Conversation.objects.for_org(org).filter(channel=Channel.SMS, address__endswith=tail).first()
-        or Conversation.objects.create(org=org, channel=Channel.SMS, contact=contact, address=number)
+        Conversation.objects.for_org(org).filter(channel=channel, address__endswith=tail).first()
+        or Conversation.objects.create(org=org, channel=channel, contact=contact, address=number)
     )
     if conversation.contact is None and contact:
         conversation.contact = contact
     contact = contact or conversation.contact
     message = Message.objects.create(
-        org=org, conversation=conversation, channel=Channel.SMS, direction=Direction.INBOUND, status=MessageStatus.RECEIVED,
+        org=org, conversation=conversation, channel=channel, direction=Direction.INBOUND, status=MessageStatus.RECEIVED,
         contact=contact, from_address=number, to_address="", body_text=body or "", provider_ref=provider_ref[:100],
         sent_at=timezone.now(),
     )
@@ -189,15 +200,41 @@ def ingest_sms(org, from_number, body, provider_ref=""):
     conversation.is_archived = False
     conversation.save()
     if contact:
-        record(org=org, kind=ActivityKind.SMS_RECEIVED, contact=contact, message=message, summary=f"SMS received: {_excerpt(body, 80)}")
+        if channel == Channel.WHATSAPP:
+            record(org=org, kind=ActivityKind.WHATSAPP_RECEIVED, contact=contact, message=message,
+                   summary=f"WhatsApp received: {_excerpt(body, 80)}")
+        else:
+            record(org=org, kind=ActivityKind.SMS_RECEIVED, contact=contact, message=message, summary=f"SMS received: {_excerpt(body, 80)}")
         from .consent import opt_in, opt_out, sms_keyword
 
         keyword = sms_keyword(body)
         if keyword == "stop":
-            opt_out(contact, Channel.SMS, "replied STOP")
+            opt_out(contact, channel, "replied STOP")
         elif keyword == "start":
-            opt_in(contact, Channel.SMS, "replied START")
+            opt_in(contact, channel, "replied START")
     return message
+
+
+def ingest_whatsapp(org, from_number, body, provider_ref=""):
+    return ingest_sms(org, from_number, body, provider_ref, channel=Channel.WHATSAPP)
+
+
+@transaction.atomic
+def apply_whatsapp_statuses(org, statuses):
+    """Delivery receipts from the WhatsApp webhook: 'read' counts as an open, 'failed' marks the message failed."""
+    for status in statuses:
+        if not status["id"]:
+            continue
+        message = Message.objects.for_org(org).filter(channel=Channel.WHATSAPP, provider_ref=status["id"]).first()
+        if message is None:
+            continue
+        if status["status"] == "read" and message.opened_at is None:
+            Message.objects.filter(pk=message.pk).update(opened_at=timezone.now(), open_count=1)
+        elif status["status"] == "failed" and message.status != MessageStatus.FAILED:
+            message.status, message.error = MessageStatus.FAILED, status["error"][:2000]
+            message.save(update_fields=["status", "error", "updated_at"])
+            record(org=org, kind=ActivityKind.MESSAGE_FAILED, actor=message.sent_by, contact=message.contact, deal=message.deal,
+                   message=message, summary=f"WhatsApp to {message.to_address} failed: {message.error[:120]}")
 
 
 # --- Tracking & calls ------------------------------------------------------------------------------------------------

@@ -86,6 +86,7 @@
         input.addEventListener("change", () => set([...input.selectedOptions].map(o => o.value)));
         break;
       case "tag": case "lifecycle": case "pipeline": case "stage": case "email_template": case "sms_template":
+      case "whatsapp_template": case "facebook_page":
       case "webform": case "sequence": case "date_field":
         input = options(h("select", { id }), schema.choices[spec.type] || [], value, spec.required ? `Pick a ${spec.label.toLowerCase()}` : "—");
         break;

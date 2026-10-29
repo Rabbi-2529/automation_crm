@@ -3,7 +3,7 @@
 {% block page_title %}Inbox{% endblock %}
 {% block page_actions %}
 <a href="{% url 'messaging:template_list' %}" class="btn btn-secondary">Templates</a>
-{% if current_membership.is_admin %}<a href="{% url 'messaging:channel_settings' %}" class="btn btn-secondary">Email &amp; SMS settings</a>{% endif %}
+{% if current_membership.is_admin %}<a href="{% url 'messaging:channel_settings' %}" class="btn btn-secondary">Channel settings</a>{% endif %}
 {% endblock %}
 {% block content %}
 <div class="grid min-h-[70vh] gap-4 lg:grid-cols-[22rem_1fr]">
@@ -28,7 +28,7 @@
             <span class="shrink-0 text-xs text-slate-400">{{ c.last_message_at|date:"d M H:i" }}</span>
           </div>
           <p class="mt-0.5 flex items-center gap-1.5 truncate text-xs text-slate-500">
-            <span class="badge {% if c.channel == 'sms' %}bg-emerald-100 text-emerald-700{% else %}bg-sky-100 text-sky-700{% endif %}">{{ c.get_channel_display }}</span>
+            <span class="badge {% if c.channel == 'sms' %}bg-emerald-100 text-emerald-700{% elif c.channel == 'whatsapp' %}bg-green-100 text-green-800{% else %}bg-sky-100 text-sky-700{% endif %}">{{ c.get_channel_display }}</span>
             {% if c.is_unread %}<span class="h-2 w-2 rounded-full bg-violet-600" aria-label="Unread"></span>{% endif %}
             {% if not c.contact %}<span class="badge bg-amber-100 text-amber-700">New sender</span>{% endif %}
             <span class="truncate">{{ c.subject }}</span>
@@ -70,6 +70,7 @@
           · {{ m.created_at|date:"d M Y, H:i" }}
           {% if m.status == "failed" %}· <span class="font-semibold text-red-200" title="{{ m.error }}">failed</span>
           {% elif m.status == "queued" %}· queued{% endif %}
+          {% if m.direction == 'out' and m.channel == 'whatsapp' and m.opened_at %}· read{% endif %}
           {% if m.direction == 'out' and m.channel == 'email' %}{% if m.open_count %}· opened{% if m.open_count > 1 %} {{ m.open_count }}×{% endif %}{% endif %}{% if m.click_count %} · {{ m.click_count }} click{{ m.click_count|pluralize }}{% endif %}{% endif %}
         </p>
       </article>
@@ -77,16 +78,46 @@
     </div>
     <form method="post" action="{% url 'messaging:reply' selected.pk %}" class="form-stack space-y-3 border-t border-slate-100 p-4">{% csrf_token %}
       {{ reply_form.body }}
-      <div class="flex items-center justify-between">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <span class="text-xs text-slate-500">Replying by {{ selected.get_channel_display }} to {{ selected.address }}</span>
-        <button class="btn btn-primary">Send reply</button>
+        <div class="flex flex-wrap items-center gap-2">
+          {% if ai_drafts %}
+          <input type="text" id="ai-instruction" placeholder="Optional: e.g. offer a demo, keep it short" class="!mt-0 !w-60 text-xs" aria-label="Instruction for the AI draft">
+          <button type="button" class="btn btn-secondary" id="ai-draft" data-url="{% url 'assistant:reply_draft' selected.pk %}">✨ Draft with AI</button>
+          {% endif %}
+          <button class="btn btn-primary">Send reply</button>
+        </div>
       </div>
+      {% if ai_drafts %}<p id="ai-draft-note" class="hidden text-xs text-slate-500"></p>{% endif %}
     </form>
+    {% if ai_drafts %}
+    <script>
+      document.getElementById("ai-draft").addEventListener("click", async e => {
+        const button = e.currentTarget, note = document.getElementById("ai-draft-note"), body = document.getElementById("id_body");
+        if (body.value.trim() && !confirm("Replace what you've written with an AI draft?")) return;
+        button.disabled = true; button.textContent = "Drafting…";
+        note.classList.remove("hidden", "text-red-600"); note.textContent = "The AI is reading the conversation…";
+        try {
+          const response = await fetch(button.dataset.url, {method: "POST", headers: {
+            "Content-Type": "application/json", "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value},
+            body: JSON.stringify({instruction: document.getElementById("ai-instruction").value})});
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "The AI couldn't draft a reply.");
+          body.value = data.draft; body.focus();
+          note.textContent = "AI draft: read and edit it before sending. The AI can be wrong.";
+        } catch (err) {
+          note.classList.add("text-red-600"); note.textContent = err.message;
+        } finally {
+          button.disabled = false; button.textContent = "✨ Draft with AI";
+        }
+      });
+    </script>
+    {% endif %}
     {% else %}
     <div class="grid flex-1 place-items-center p-10 text-center text-sm text-slate-500">
       <div>
         <p class="text-base font-medium text-slate-700">Pick a conversation</p>
-        <p class="mt-1">Emails and SMS you send from contact pages, and replies that come back, show up here.</p>
+        <p class="mt-1">Emails, SMS and WhatsApp messages you send from contact pages, and replies that come back, show up here.</p>
       </div>
     </div>
     {% endif %}

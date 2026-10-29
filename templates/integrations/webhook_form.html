@@ -1,0 +1,24 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if object %}Edit webhook{% else %}New webhook{% endif %}{% endblock %}
+{% block page_title %}<a href="{% url 'integrations:overview' %}?tab=webhooks" class="text-sm font-normal text-slate-400 hover:text-violet-600">Integrations /</a> {% if object %}Edit webhook{% else %}New webhook{% endif %}{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <form method="post" class="card space-y-6 lg:col-span-2">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="flex justify-between">
+      <a href="{% if object %}{% url 'integrations:webhook_detail' object.pk %}{% else %}{% url 'integrations:overview' %}?tab=webhooks{% endif %}" class="btn btn-secondary">Cancel</a>
+      <button class="btn btn-primary">Save webhook</button>
+    </div>
+  </form>
+  <aside class="card text-sm text-slate-600">
+    <h2 class="font-semibold text-slate-900">Popular events</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+      <li><strong>Created</strong>: new contacts, companies and deals</li>
+      <li><strong>Deal won / lost</strong>: sync to accounting or invoicing</li>
+      <li><strong>Email / SMS / WhatsApp received</strong>: alert a chat channel</li>
+      <li><strong>Form submitted / Facebook lead ad</strong>: push leads to another tool</li>
+    </ul>
+    <p class="mt-3">You'll get a signing secret after saving.</p>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "layouts/app.html" %}
+{% block title %}Calendar sync{% endblock %}
+{% block page_title %}<a href="{% url 'tasks:calendar' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Calendar /</a> Sync to Google Calendar{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="card space-y-5 lg:col-span-2">
+    {% if feed %}
+    <div>
+      <h2 class="font-semibold">Your private calendar link</h2>
+      <p class="mt-1 text-sm text-slate-600">Your tasks with a due date{% if feed.include_deals %} and the close dates of your open deals{% endif %}, updated about every hour by your calendar app.</p>
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <code id="feed-url" class="break-all rounded bg-slate-100 px-3 py-2 text-xs">{{ feed_url }}</code>
+        <button type="button" class="btn btn-secondary" data-copy="#feed-url">Copy</button>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{{ google_url }}" target="_blank" rel="noopener" class="btn btn-primary">Add to Google Calendar ↗</a>
+      <a href="{{ webcal_url }}" class="btn btn-secondary">Open in Apple / Outlook</a>
+    </div>
+    <form method="post" class="form-stack flex items-center gap-3 border-t border-slate-100 pt-4 text-sm">{% csrf_token %}
+      <input type="hidden" name="action" value="save">
+      <label class="flex items-center gap-2">{{ form.include_deals }} {{ form.include_deals.help_text }}</label>
+      <button class="btn btn-secondary">Save</button>
+    </form>
+    <div class="flex flex-wrap gap-4 border-t border-slate-100 pt-4 text-sm">
+      <form method="post" onsubmit="return confirm('Make a new link? The old link stops working and you subscribe again.')">{% csrf_token %}
+        <input type="hidden" name="action" value="rotate"><button class="text-violet-600 hover:underline">Make a new link</button></form>
+      <form method="post" onsubmit="return confirm('Turn off the calendar link?')">{% csrf_token %}
+        <input type="hidden" name="action" value="delete"><button class="text-red-600 hover:underline">Turn off</button></form>
+      {% if feed.last_fetched_at %}<span class="text-slate-500">Last read by a calendar {{ feed.last_fetched_at|timesince }} ago</span>{% endif %}
+    </div>
+    {% else %}
+    <h2 class="font-semibold">See your CRM tasks in Google Calendar</h2>
+    <p class="text-sm text-slate-600">Get a private link that Google Calendar, Outlook or Apple Calendar can subscribe to. Your tasks and deal close dates then show up next to your other meetings.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="create"><button class="btn btn-primary">Create my calendar link</button></form>
+    {% endif %}
+  </div>
+  <aside class="card text-sm text-slate-600">
+    <h2 class="font-semibold text-slate-900">Good to know</h2>
+    <ul class="mt-2 list-disc space-y-1 pl-5">
+      <li>It's one-way: change tasks here in the CRM; your calendar shows them.</li>
+      <li>Google refreshes subscribed calendars every few hours, so new tasks can take a while to appear.</li>
+      <li>Anyone with the link can see these events. If it leaks, make a new link.</li>
+    </ul>
+  </aside>
+</div>
+<script>
+  document.querySelectorAll("[data-copy]").forEach(btn => btn.addEventListener("click", () => {
+    navigator.clipboard.writeText(document.querySelector(btn.dataset.copy).textContent.trim());
+    btn.textContent = "Copied";
+  }));
+</script>
+{% endblock %}

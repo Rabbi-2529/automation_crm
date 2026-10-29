@@ -5,6 +5,7 @@
 {% if current_membership.is_manager %}
 <a href="{% url 'messaging:template_create' %}?channel=email" class="btn btn-primary">+ Email template</a>
 <a href="{% url 'messaging:template_create' %}?channel=sms" class="btn btn-secondary">+ SMS template</a>
+<a href="{% url 'messaging:template_create' %}?channel=whatsapp" class="btn btn-secondary">+ WhatsApp template</a>
 {% endif %}
 {% endblock %}
 {% block content %}
@@ -15,7 +16,7 @@
       {% for t in templates %}
       <tr>
         <td class="font-medium">{{ t.name }}</td>
-        <td><span class="badge {% if t.channel == 'sms' %}bg-emerald-100 text-emerald-700{% else %}bg-sky-100 text-sky-700{% endif %}">{{ t.get_channel_display }}</span></td>
+        <td><span class="badge {% if t.channel == 'sms' %}bg-emerald-100 text-emerald-700{% elif t.channel == 'whatsapp' %}bg-green-100 text-green-800{% else %}bg-sky-100 text-sky-700{% endif %}">{{ t.get_channel_display }}</span>{% if t.whatsapp_template %} <span class="text-xs text-slate-500">approved: {{ t.whatsapp_template }}</span>{% endif %}</td>
         <td class="max-w-md truncate text-slate-500">{{ t.subject|default:t.body|truncatechars:90 }}</td>
         <td>{{ t.created_by.display_name|default:"—" }}</td>
         <td class="text-right">{% if current_membership.is_manager %}<a href="{% url 'messaging:template_edit' t.pk %}" class="text-violet-600 hover:underline">Edit</a> · <a href="{% url 'messaging:template_delete' t.pk %}" class="text-red-600 hover:underline">Delete</a>{% endif %}</td>

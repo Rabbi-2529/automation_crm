@@ -1,4 +1,5 @@
 import base64
+import json
 
 from django.contrib import messages
 from django.db.models import Q
@@ -31,11 +32,13 @@ from .forms import (
     SendingRulesForm,
     SmsSettingsForm,
     TemplateForm,
+    WhatsAppSettingsForm,
 )
 from .inbound import fetch_inbox, twilio_signature_valid
-from .models import Channel, ChannelSettings, Conversation, Message, MessageTemplate, SmsProvider, TrackedLink
+from .models import Channel, ChannelSettings, Conversation, Message, MessageTemplate, SmsProvider, TrackedLink, WhatsAppProvider
 from .rendering import VARIABLES, build_context, render as render_variables
 from .sms import send_sms
+from .whatsapp import parse_webhook, send_whatsapp, signature_valid, window_open
 
 PIXEL = base64.b64decode("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
 
@@ -65,6 +68,10 @@ class ComposeView(OrgMemberRequiredMixin, View):
             "form": form, "contact": self.contact, "channel": self.channel, "variables": VARIABLES,
             "channel_settings": self.channel_settings,
             "sms_not_ready": self.channel == Channel.SMS and not self.channel_settings.sms_ready,
+            "whatsapp_not_ready": self.channel == Channel.WHATSAPP and not self.channel_settings.whatsapp_ready,
+            "whatsapp_window_open": self.channel == Channel.WHATSAPP and window_open(
+                Conversation.objects.for_org(self.request.org).filter(channel=Channel.WHATSAPP, contact=self.contact)
+                .order_by("-last_message_at").first()),
         })
 
     def get(self, request):
@@ -100,7 +107,7 @@ class TemplatePreviewView(OrgMemberRequiredMixin, View):
 
 # --- Inbox -----------------------------------------------------------------------------------------------------------
 
-INBOX_FILTERS = [("all", "All"), ("unread", "Unread"), ("email", "Email"), ("sms", "SMS"), ("mine", "My contacts"),
+INBOX_FILTERS = [("all", "All"), ("unread", "Unread"), ("email", "Email"), ("sms", "SMS"), ("whatsapp", "WhatsApp"), ("mine", "My contacts"),
                  ("unknown", "Unknown senders"), ("archived", "Archived")]
 
 
@@ -136,8 +143,15 @@ class InboxView(OrgMemberRequiredMixin, TemplateView):
         return super().get_context_data(
             box=box, boxes=INBOX_FILTERS, conversations=conversations[:100], selected=selected,
             thread=selected.messages.select_related("sent_by").order_by("created_at") if selected else [],
-            reply_form=ReplyForm(), q=self.request.GET.get("q", ""), **kwargs,
+            reply_form=ReplyForm(), q=self.request.GET.get("q", ""), ai_drafts=_ai_drafts_on(self.request.org), **kwargs,
         )
+
+
+def _ai_drafts_on(org):
+    from apps.assistant.models import AssistantSettings
+    from apps.assistant.providers import resolve
+
+    return AssistantSettings.for_org(org).reply_drafts_enabled and resolve(org).is_ai
 
 
 class ConversationReplyView(OrgMemberRequiredMixin, View):
@@ -256,7 +270,8 @@ class TemplateDeleteView(ManagerRequiredMixin, OrgScopedQuerysetMixin, DeleteVie
 
 # --- Channel settings ------------------------------------------------------------------------------------------------
 
-SETTINGS_FORMS = {"email": EmailSettingsForm, "imap": ImapSettingsForm, "sms": SmsSettingsForm, "rules": SendingRulesForm}
+SETTINGS_FORMS = {"email": EmailSettingsForm, "imap": ImapSettingsForm, "sms": SmsSettingsForm, "whatsapp": WhatsAppSettingsForm,
+                  "rules": SendingRulesForm}
 
 
 class ChannelSettingsView(AdminRequiredMixin, View):
@@ -270,6 +285,7 @@ class ChannelSettingsView(AdminRequiredMixin, View):
         return render(request, self.template_name, {
             **context, "tab": tab, "channel_settings": channel_settings, "sender": email_backend.sender(channel_settings),
             "twilio_webhook": request.build_absolute_uri(reverse("messaging:twilio_sms", args=[channel_settings.webhook_token])),
+            "whatsapp_webhook": request.build_absolute_uri(reverse("messaging:whatsapp_webhook", args=[channel_settings.webhook_token])),
         })
 
     def get(self, request):
@@ -305,6 +321,10 @@ class ChannelTestView(AdminRequiredMixin, View):
                 to = request.POST.get("to") or request.user.phone
                 send_sms(channel_settings, to, "ThingBD CRM test SMS: your SMS settings work.")
                 messages.success(request, f"Test SMS sent to {to}.")
+            elif action == "whatsapp":
+                to = request.POST.get("to") or request.user.phone
+                send_whatsapp(channel_settings, to, "ThingBD CRM test message: your WhatsApp settings work.")
+                messages.success(request, f"Test WhatsApp message sent to {to}.")
             elif action == "imap":
                 stored = fetch_inbox(channel_settings)
                 channel_settings.refresh_from_db()
@@ -316,7 +336,7 @@ class ChannelTestView(AdminRequiredMixin, View):
                 raise Http404
         except Exception as exc:  # noqa: BLE001 - shown to the admin testing their settings
             messages.error(request, f"Test failed: {type(exc).__name__}: {exc}")
-        tab = {"email": "email", "sms": "sms", "imap": "imap"}.get(action, "email")
+        tab = {"email": "email", "sms": "sms", "whatsapp": "whatsapp", "imap": "imap"}.get(action, "email")
         return redirect(reverse("messaging:channel_settings") + f"?tab={tab}")
 
 
@@ -340,7 +360,7 @@ def track_click(request, token):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class TwilioSmsWebhook(View):
-    """Incoming SMS from Twilio. Configure the URL shown in Settings → Email & SMS on your Twilio number."""
+    """Incoming SMS from Twilio. Configure the URL shown in Settings → Messaging channels on your Twilio number."""
 
     def post(self, request, token):
         channel_settings = ChannelSettings.objects.filter(webhook_token=token, sms_provider=SmsProvider.TWILIO).select_related("org").first()
@@ -353,6 +373,39 @@ class TwilioSmsWebhook(View):
         services.ingest_sms(channel_settings.org, params.get("From", ""), params.get("Body", ""), params.get("MessageSid", ""))
         return HttpResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', content_type="text/xml")
 
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class WhatsAppWebhook(View):
+    """WhatsApp Cloud API webhook: GET is Meta's subscription check, POST carries messages and delivery receipts."""
+
+    def channel_settings(self, token):
+        channel_settings = (ChannelSettings.objects.filter(webhook_token=token, whatsapp_provider=WhatsAppProvider.CLOUD)
+                            .select_related("org").first())
+        if channel_settings is None:
+            raise Http404
+        return channel_settings
+
+    def get(self, request, token):
+        channel_settings = self.channel_settings(token)
+        if (request.GET.get("hub.mode") == "subscribe"
+                and request.GET.get("hub.verify_token") == channel_settings.whatsapp_verify_token):
+            return HttpResponse(request.GET.get("hub.challenge", ""), content_type="text/plain")
+        return HttpResponseForbidden("Verify token doesn't match")
+
+    def post(self, request, token):
+        channel_settings = self.channel_settings(token)
+        if not signature_valid(channel_settings.whatsapp_app_secret, request.body, request.headers.get("X-Hub-Signature-256", "")):
+            return HttpResponseForbidden("Bad signature")
+        try:
+            payload = json.loads(request.body or b"{}")
+        except ValueError:
+            return HttpResponse(status=400)
+        inbound, statuses = parse_webhook(payload)
+        for item in inbound:
+            services.ingest_whatsapp(channel_settings.org, item["from"], item["body"], item["id"])
+        services.apply_whatsapp_statuses(channel_settings.org, statuses)
+        return HttpResponse("ok", content_type="text/plain")
 
 
 @method_decorator(csrf_exempt, name="dispatch")  # signed token in the URL is the credential; mail clients POST one-click

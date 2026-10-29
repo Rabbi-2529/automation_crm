@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from django.contrib.auth import get_user_model
 
 from apps.contacts.models import CustomFieldDefinition, Entity, LifecycleStage, Source, Tag
+from apps.integrations.models import FacebookPage
 from apps.messaging.models import Channel, MessageTemplate
 from apps.pipeline.models import DealStatus, Pipeline, Stage
 from apps.tasks.models import Priority, TaskKind
@@ -23,7 +24,7 @@ TIME_UNITS = [("minutes", "minutes"), ("hours", "hours"), ("days", "days")]
 class Field:
     name: str
     label: str
-    type: str  # text|textarea|number|checkbox|select|user|users|tag|lifecycle|stage|pipeline|email_template|sms_template|url|conditions
+    type: str  # text|textarea|number|checkbox|select|user|users|tag|lifecycle|stage|pipeline|email_template|sms_template|whatsapp_template|facebook_page|url|conditions
     required: bool = True
     default: object = None
     options: list = field(default_factory=list)  # for type=select: [(value, label)]
@@ -81,9 +82,12 @@ TRIGGERS = {
     "email_clicked": Trigger("Contact clicks a link in an email", "Activity", "contact"),
     "email_received": Trigger("Email received from contact", "Activity", "contact"),
     "sms_received": Trigger("SMS received from contact", "Activity", "contact"),
+    "whatsapp_received": Trigger("WhatsApp message received from contact", "Activity", "contact"),
     "call_logged": Trigger("Call is logged", "Activity", "contact"),
     "form_submitted": Trigger("Web form is submitted", "Leads", "contact", [
         Field("form", "Form", "webform", required=False, help="Leave empty for any form.")]),
+    "facebook_lead": Trigger("Facebook lead ad is submitted", "Leads", "contact", [
+        Field("page", "Facebook page", "facebook_page", required=False, help="Leave empty for any connected page.")]),
     "lead_grade_changed": Trigger("Lead grade changes", "Leads", "contact", [
         Field("to_grade", "Becomes", "select", required=False, options=[("hot", "Hot"), ("warm", "Warm"), ("cold", "Cold")])]),
     "lead_not_contacted": Trigger("New lead not contacted in time (speed to lead)", "Leads", "contact", [
@@ -113,6 +117,11 @@ ACTIONS = {
         Field("template", "Template", "sms_template", required=False),
         Field("body", "Message", "textarea", required=False),
     ], help="Skipped when the contact has no phone."),
+    "send_whatsapp": Action("Send WhatsApp message", "Messages", [
+        Field("template", "Template", "whatsapp_template", required=False,
+              help="Use a template with an approved WhatsApp template name to reach people who haven't written in 24 hours."),
+        Field("body", "Message", "textarea", required=False),
+    ], help="Skipped when the contact has no phone or opted out of WhatsApp."),
     "notify_user": Action("Email a teammate", "Messages", [
         Field("user", "Who", **USER_PICK),
         Field("message", "Message", "textarea"),
@@ -190,6 +199,7 @@ def condition_fields(org):
         ("contact.grade", "Contact · Lead grade", "choice", "grade"),
         ("contact.email_opt_out", "Contact · Unsubscribed from email", "choice", "yesno"),
         ("contact.sms_opt_out", "Contact · Unsubscribed from SMS", "choice", "yesno"),
+        ("contact.whatsapp_opt_out", "Contact · Unsubscribed from WhatsApp", "choice", "yesno"),
         ("contact.segment", "Contact · In segment", "choice", "segment"),
         ("deal.title", "Deal · Title", "text", "text"),
         ("deal.value", "Deal · Value", "number", "number"),
@@ -234,6 +244,9 @@ def choices(org):
         "pipeline": [{"id": str(p.pk), "text": p.name} for p in Pipeline.objects.for_org(org)],
         "email_template": [{"id": str(t.pk), "text": t.name} for t in templates.filter(channel=Channel.EMAIL)],
         "sms_template": [{"id": str(t.pk), "text": t.name} for t in templates.filter(channel=Channel.SMS)],
+        "whatsapp_template": [{"id": str(t.pk), "text": t.name + (" (approved template)" if t.whatsapp_template else "")}
+                              for t in templates.filter(channel=Channel.WHATSAPP)],
+        "facebook_page": [{"id": str(p.pk), "text": p.name} for p in FacebookPage.objects.for_org(org)],
     }
 
 
@@ -314,8 +327,9 @@ def validate_config(fields, config, org, where):
             if value not in LifecycleStage.values:
                 errors.append(f"{where}: pick a valid lifecycle stage.")
             clean[f.name] = value
-        elif f.type in ("tag", "stage", "pipeline", "email_template", "sms_template"):
-            model = {"tag": Tag, "stage": Stage, "pipeline": Pipeline, "email_template": MessageTemplate, "sms_template": MessageTemplate}[f.type]
+        elif f.type in ("tag", "stage", "pipeline", "email_template", "sms_template", "whatsapp_template", "facebook_page"):
+            model = {"tag": Tag, "stage": Stage, "pipeline": Pipeline, "email_template": MessageTemplate, "sms_template": MessageTemplate,
+                     "whatsapp_template": MessageTemplate, "facebook_page": FacebookPage}[f.type]
             if not _ids_in_org(model, org, [value]):
                 errors.append(f"{where}: {f.label} no longer exists.")
             clean[f.name] = str(value)

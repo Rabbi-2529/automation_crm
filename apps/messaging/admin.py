@@ -6,7 +6,7 @@ from .models import CallLog, ChannelSettings, Conversation, Message, MessageTemp
 @admin.register(ChannelSettings)
 class ChannelSettingsAdmin(admin.ModelAdmin):
     list_display = ["org", "smtp_host", "imap_enabled", "sms_provider", "imap_last_checked_at"]
-    # Secrets stay out of the admin; workspace admins manage them in Settings → Email & SMS.
+    # Secrets stay out of the admin; workspace admins manage them in Settings → Messaging channels.
     exclude = ["smtp_password", "imap_password", "twilio_auth_token", "http_api_key"]
     readonly_fields = ["imap_last_uid", "imap_last_checked_at", "imap_last_error", "webhook_token"]
 

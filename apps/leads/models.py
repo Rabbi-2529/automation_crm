@@ -80,6 +80,8 @@ class ScoringEvent(models.TextChoices):
     EMAIL_CLICKED = "email_clicked", "Clicks a link in an email"
     EMAIL_RECEIVED = "email_received", "Replies by email"
     SMS_RECEIVED = "sms_received", "Replies by SMS"
+    WHATSAPP_RECEIVED = "whatsapp_received", "Replies on WhatsApp"
+    FACEBOOK_LEAD = "facebook_lead", "Submits a Facebook lead ad"
     CALL_LOGGED = "call_logged", "Has a call logged"
     DEAL_CREATED = "deal_created", "Gets a deal"
     UNSUBSCRIBED = "unsubscribed", "Unsubscribes"

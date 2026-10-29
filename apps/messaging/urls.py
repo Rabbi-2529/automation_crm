@@ -23,4 +23,5 @@ urlpatterns = [
     path("t/c/<str:token>/", views.track_click, name="track_click"),
     path("u/<str:token>/", views.UnsubscribeView.as_view(), name="unsubscribe"),
     path("webhooks/twilio/<str:token>/sms/", views.TwilioSmsWebhook.as_view(), name="twilio_sms"),
+    path("webhooks/whatsapp/<str:token>/", views.WhatsAppWebhook.as_view(), name="whatsapp_webhook"),
 ]

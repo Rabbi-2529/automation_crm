@@ -15,7 +15,8 @@ TEXT_FIELDS = {
 }
 CHOICE_FIELDS = {"contact.lifecycle_stage": "lifecycle_stage", "contact.source": "source", "contact.owner": "owner_id",
                  "contact.grade": "grade"}
-BOOL_FIELDS = {"contact.email_opt_out": "email_opt_out", "contact.sms_opt_out": "sms_opt_out"}
+BOOL_FIELDS = {"contact.email_opt_out": "email_opt_out", "contact.sms_opt_out": "sms_opt_out",
+               "contact.whatsapp_opt_out": "whatsapp_opt_out"}
 NUMBER_OPS = {"eq": "exact", "gt": "gt", "gte": "gte", "lt": "lt", "lte": "lte"}
 
 

@@ -3,6 +3,7 @@
 {% block head %}<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>{% endblock %}
 {% block page_title %}Calendar{% endblock %}
 {% block page_actions %}
+<a href="{% url 'tasks:calendar_sync' %}" class="btn btn-secondary">Sync to Google Calendar</a>
 <a href="{% url 'tasks:task_list' %}" class="btn btn-secondary">Task list</a>
 <a href="{% url 'tasks:task_create' %}?next={% url 'tasks:calendar' %}" class="btn btn-primary">+ New task</a>
 {% endblock %}

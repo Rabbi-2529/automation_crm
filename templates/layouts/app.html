@@ -3,12 +3,15 @@
 {% with url_name=request.resolver_match.url_name ns=request.resolver_match.namespace %}
 <div class="flex min-h-full">
   <aside id="sidebar" class="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-[#050505] text-[#A19DAB] lg:flex">
-    <div class="flex h-16 items-center gap-2 px-6 text-lg font-semibold text-white">
+    <div class="flex h-16 shrink-0 items-center gap-2 px-6 text-lg font-semibold text-white">
       <img src="{% static 'img/favicon.svg' %}" alt="" class="h-8 w-8"> ThingBD CRM
     </div>
-    <nav class="flex-1 space-y-1 px-3 py-4 text-sm">
+    <nav id="sidebar-nav" class="sidebar-scroll min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 py-4 text-sm">
       {% include "partials/nav_link.html" with href="/" label="Dashboard" match="dashboard" %}
-      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">CRM</p>
+      {% url "assistant:help_center" as help_url %}
+      {% include "partials/nav_link.html" with href=help_url label="Help & AI assistant" match="help" %}
+      <div class="pt-3"></div>
+      {% include "partials/nav_group.html" with key="crm" label="CRM" alert=my_task_overdue_count|default:inbox_unread_count %}
       {% url "contacts:contact_list" as contacts_url %}
       {% include "partials/nav_link.html" with href=contacts_url label="Contacts" match="contact" %}
       {% url "contacts:company_list" as companies_url %}
@@ -29,7 +32,8 @@
       {% include "partials/nav_link.html" with href=automations_url label="Automations" match="workflow" %}
       {% url "reports:overview" as reports_url %}
       {% include "partials/nav_link.html" with href=reports_url label="Reports" ns_match="reports" %}
-      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">Marketing</p>
+      </div></details>
+      {% include "partials/nav_group.html" with key="marketing" label="Marketing" %}
       {% url "campaigns:segment_list" as segments_url %}
       {% include "partials/nav_link.html" with href=segments_url label="Segments" match="segment" %}
       {% url "campaigns:sequence_list" as sequences_url %}
@@ -42,7 +46,8 @@
         {% url "leads:scoring" as scoring_url %}
         {% include "partials/nav_link.html" with href=scoring_url label="Lead scoring" match="scoring" %}
       {% endif %}
-      <p class="px-3 pt-5 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#8B5CF6]">Workspace</p>
+      </div></details>
+      {% include "partials/nav_group.html" with key="workspace" label="Workspace" %}
       {% url "orgs:teams" as teams_url %}
       {% include "partials/nav_link.html" with href=teams_url label="Teams" match="team" %}
       {% if current_membership.is_manager %}
@@ -57,16 +62,40 @@
       {% endif %}
       {% if current_membership.is_admin %}
         {% url "orgs:settings" as settings_url %}
-        {% include "partials/nav_link.html" with href=settings_url label="Settings" match="settings" %}
+        {% include "partials/nav_link.html" with href=settings_url label="Settings" exact="orgs:settings" %}
+        {% url "assistant:settings" as ai_settings_url %}
+        {% include "partials/nav_link.html" with href=ai_settings_url label="AI assistant" exact="assistant:ai_settings" %}
+        {% url "integrations:overview" as integrations_url %}
+        {% include "partials/nav_link.html" with href=integrations_url label="Integrations" ns_match="integrations" %}
         {% url "messaging:channel_settings" as channels_url %}
-        {% include "partials/nav_link.html" with href=channels_url label="Email & SMS" match="channel" %}
+        {% include "partials/nav_link.html" with href=channels_url label="Messaging channels" match="channel" %}
         {% url "contacts:custom_field_list" as fields_url %}
         {% include "partials/nav_link.html" with href=fields_url label="Custom fields" match="custom_field" %}
         {% url "core:system" as system_url %}
         {% include "partials/nav_link.html" with href=system_url label="System status" match="system" %}
       {% endif %}
+      </div></details>
     </nav>
-    <div class="border-t border-white/10 p-4 text-xs text-slate-500">Signed in as {{ request.user.email }}</div>
+    <script>
+      // Sidebar groups: the one holding the current page starts open, otherwise the last one you opened;
+      // opening a group closes the others. Runs inline so the menu doesn't flicker.
+      (function () {
+        const groups = [...document.querySelectorAll("#sidebar-nav [data-nav-group]")];
+        const remember = key => { try { localStorage.setItem("crm.navGroup", key); } catch (e) {} };
+        let saved = null;
+        try { saved = localStorage.getItem("crm.navGroup"); } catch (e) {}
+        const active = groups.find(g => g.querySelector('[aria-current="page"]'));
+        const first = active || groups.find(g => g.dataset.navGroup === saved);
+        if (first) first.open = true;
+        groups.forEach(g => g.addEventListener("toggle", () => {
+          if (!g.open) return;
+          remember(g.dataset.navGroup);
+          groups.forEach(other => { if (other !== g) other.open = false; });
+        }));
+        document.querySelector('#sidebar-nav [aria-current="page"]')?.scrollIntoView({block: "nearest"});
+      })();
+    </script>
+    <div class="shrink-0 border-t border-white/10 p-4 text-xs text-slate-500">Signed in as {{ request.user.email }}</div>
   </aside>
 
   <div class="flex min-h-full flex-1 flex-col lg:pl-64">
@@ -111,6 +140,7 @@
         {% block content %}{% endblock %}
       </div>
     </main>
+    {% include "assistant/partials/help_widget.html" %}
   </div>
 </div>
 {% endwith %}

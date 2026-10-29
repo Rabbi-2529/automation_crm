@@ -38,7 +38,7 @@ def send_sms(channel_settings, to, body):
         return _twilio(channel_settings, number, body)
     if provider == SmsProvider.HTTP:
         return _http(channel_settings, number, body)
-    raise SmsError("SMS isn't set up for this workspace yet (Settings → Email & SMS).")
+    raise SmsError("SMS isn't set up for this workspace yet (Settings → Messaging channels).")
 
 
 def _twilio(cs, number, body):

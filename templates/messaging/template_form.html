@@ -12,4 +12,18 @@
   </form>
   {% include "messaging/partials/variables.html" with target="id_body" %}
 </div>
+<script>
+  // WhatsApp-only fields show for WhatsApp templates; the subject only for email.
+  document.addEventListener("DOMContentLoaded", () => {
+    const channel = document.getElementById("id_channel");
+    const rowOf = id => document.getElementById(id)?.closest(".form-stack > div");
+    const toggle = () => {
+      const wa = channel.value === "whatsapp";
+      ["id_whatsapp_template", "id_whatsapp_language", "id_whatsapp_params"].forEach(id => rowOf(id)?.classList.toggle("hidden", !wa));
+      rowOf("id_subject")?.classList.toggle("hidden", channel.value !== "email");
+    };
+    channel.addEventListener("change", toggle);
+    toggle();
+  });
+</script>
 {% endblock %}

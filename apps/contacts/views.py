@@ -221,14 +221,14 @@ def _enroll_form(org):
 
 
 class ContactConsentView(OrgMemberRequiredMixin, View):
-    """Manually mark a contact as opted out of / back into email or SMS (e.g. they asked by phone)."""
+    """Manually mark a contact as opted out of / back into email, SMS or WhatsApp (e.g. they asked by phone)."""
 
     def post(self, request, pk):
         from apps.messaging.consent import opt_in, opt_out
 
         contact = Contact.objects.for_org(request.org).filter(pk=pk).first()
         channel = request.POST.get("channel")
-        if contact and channel in ("email", "sms"):
+        if contact and channel in ("email", "sms", "whatsapp"):
             how = f"set by {request.user.display_name}"
             changed = opt_out(contact, channel, how) if request.POST.get("opt") == "out" else opt_in(contact, channel, how)
             if changed:

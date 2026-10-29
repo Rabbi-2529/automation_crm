@@ -111,3 +111,10 @@ table.dataTable td.dt-empty { color: var(--crm-muted); padding: 3rem 1rem !impor
 .fc .fc-event.crm-deal { background: #059669; }
 .fc .fc-daygrid-event-dot { display: none; }
 .fc .fc-daygrid-dot-event .fc-event-title, .fc .fc-daygrid-dot-event .fc-event-time { color: #fff; }
+
+/* ---------- Sidebar ---------- */
+.sidebar-scroll { scrollbar-width: thin; scrollbar-color: #2a2733 transparent; }
+.sidebar-scroll::-webkit-scrollbar { width: 6px; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: #2a2733; border-radius: 9999px; }
+#sidebar-nav details > summary { list-style: none; }
+#sidebar-nav details > summary::-webkit-details-marker { display: none; }

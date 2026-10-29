@@ -2,12 +2,9 @@
 
 import hashlib
 import hmac
-import ipaddress
 import json
-import socket
 from dataclasses import dataclass
 from datetime import timedelta
-from urllib.parse import urlsplit
 
 import requests
 from django.conf import settings
@@ -18,6 +15,7 @@ from django.utils import timezone
 from apps.activities.models import ActivityKind, Note
 from apps.activities.services import record, record_changes, snapshot
 from apps.contacts.models import LifecycleStage, Source, Tag
+from apps.core.net import check_public_url
 from apps.messaging.consent import can_message, next_send_time
 from apps.messaging.models import Channel, ChannelSettings, MessageTemplate
 from apps.messaging.rendering import build_context, render
@@ -88,17 +86,10 @@ def _template(org, pk, channel):
 
 def _check_public_url(url):
     """Blocks webhooks to localhost / private networks (SSRF)."""
-    host = urlsplit(url).hostname
-    if not host:
-        raise ActionError("Webhook URL has no host")
     try:
-        addresses = {info[4][0] for info in socket.getaddrinfo(host, None)}
-    except socket.gaierror as exc:
-        raise ActionError(f"Can't resolve {host}") from exc
-    for address in addresses:
-        ip = ipaddress.ip_address(address)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
-            raise ActionError(f"Webhook to a private address ({host}) isn't allowed")
+        check_public_url(url)
+    except ValueError as exc:
+        raise ActionError(f"Webhook blocked: {exc}") from exc
 
 
 def payload_for(run):
@@ -125,7 +116,7 @@ def payload_for(run):
 def _automated_send_check(run, channel):
     """Opt-outs skip the step; quiet hours defer it (the same step runs again when the window opens)."""
     contact = run.contact
-    address = contact.email if channel == Channel.EMAIL else contact.phone if contact else ""
+    address = (contact.email if channel == Channel.EMAIL else contact.phone) if contact else ""
     if not contact or not address:
         return skipped(f"Contact has no {'email address' if channel == Channel.EMAIL else 'phone number'}")
     if not can_message(contact, channel):
@@ -161,6 +152,19 @@ def send_sms(run, cfg, action):
     compose(org=run.org, user=_owner(run), channel=Channel.SMS, to_address=contact.phone, body=body, contact=contact,
             deal=run.deal, template=template)
     return done(f"SMS queued to {contact.phone}")
+
+
+def send_whatsapp(run, cfg, action):
+    contact = run.contact
+    if (blocked := _automated_send_check(run, Channel.WHATSAPP)) is not None:
+        return blocked
+    template = _template(run.org, cfg.get("template"), Channel.WHATSAPP)
+    body = cfg.get("body") or (template.body if template else "")
+    if not body and not (template and template.whatsapp_template):
+        raise ActionError("WhatsApp needs a message (or a template)")
+    compose(org=run.org, user=_owner(run), channel=Channel.WHATSAPP, to_address=contact.phone, body=body or template.whatsapp_template,
+            contact=contact, deal=run.deal, template=template)
+    return done(f"WhatsApp queued to {contact.phone}")
 
 
 def notify_user(run, cfg, action):
@@ -375,7 +379,7 @@ def condition_gate(run, cfg, action):
 
 
 HANDLERS = {
-    "send_email": send_email, "send_sms": send_sms, "notify_user": notify_user, "create_task": create_task,
+    "send_email": send_email, "send_sms": send_sms, "send_whatsapp": send_whatsapp, "notify_user": notify_user, "create_task": create_task,
     "assign_owner": assign_owner, "set_lifecycle": set_lifecycle, "update_field": update_field, "add_tag": add_tag,
     "remove_tag": remove_tag, "add_note": add_note, "create_deal": create_deal, "move_deal": move_deal,
     "webhook": webhook, "wait": wait, "condition_gate": condition_gate,

@@ -1,0 +1,25 @@
+{% extends "layouts/app.html" %}
+{% block title %}{{ article.title }}{% endblock %}
+{% block page_title %}<a href="{% url 'assistant:help_center' %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">Help /</a> {{ article.title }}{% endblock %}
+{% block page_actions %}{% if article.url_name %}<a href="{% url article.url_name %}" class="btn btn-secondary">Go to page →</a>{% endif %}{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <article class="card space-y-3 text-sm leading-6 text-slate-700 lg:col-span-2" id="article-body" data-markdown="{{ article.body }}"></article>
+  <aside class="space-y-4">
+    {% if related %}
+    <div class="card text-sm">
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Related</h2>
+      <ul class="mt-2 space-y-1">{% for a in related %}<li><a href="{% url 'assistant:help_article' a.slug %}" class="text-violet-700 hover:underline">{{ a.title }}</a></li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    <div class="card text-sm text-slate-600">Still stuck? Ask the <strong>✨ Help</strong> button at the bottom right, or your workspace admin.</div>
+  </aside>
+</div>
+<script>
+  // assistant.js comes with the Help widget (deferred, so it's ready by DOMContentLoaded).
+  document.addEventListener("DOMContentLoaded", () => {
+    const body = document.getElementById("article-body");
+    body.innerHTML = window.crmAssistantRender(body.dataset.markdown);
+  });
+</script>
+{% endblock %}

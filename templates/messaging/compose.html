@@ -1,14 +1,24 @@
 {% extends "layouts/app.html" %}
-{% block title %}{% if channel == "sms" %}New SMS{% else %}New email{% endif %}{% endblock %}
+{% block title %}New {% if channel == "sms" %}SMS{% elif channel == "whatsapp" %}WhatsApp{% else %}email{% endif %}{% endblock %}
 {% block page_title %}
 <a href="{% url 'contacts:contact_detail' contact.pk %}" class="text-sm font-normal text-slate-400 hover:text-violet-600">{{ contact.display_name }} /</a>
-{% if channel == "sms" %}Send SMS{% else %}Send email{% endif %}
+Send {% if channel == "sms" %}SMS{% elif channel == "whatsapp" %}WhatsApp{% else %}email{% endif %}
 {% endblock %}
 {% block content %}
 {% if sms_not_ready %}
 <div class="mb-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-200">
   SMS isn't set up for this workspace yet, so this message will fail.
   {% if current_membership.is_admin %}<a href="{% url 'messaging:channel_settings' %}?tab=sms" class="font-medium underline">Set up SMS</a>{% else %}Ask an admin to set it up.{% endif %}
+</div>
+{% endif %}
+{% if whatsapp_not_ready %}
+<div class="mb-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-200">
+  WhatsApp isn't set up for this workspace yet, so this message will fail.
+  {% if current_membership.is_admin %}<a href="{% url 'messaging:channel_settings' %}?tab=whatsapp" class="font-medium underline">Set up WhatsApp</a>{% else %}Ask an admin to set it up.{% endif %}
+</div>
+{% elif channel == "whatsapp" and not whatsapp_window_open %}
+<div class="mb-6 rounded-xl bg-sky-50 p-4 text-sm text-sky-800 ring-1 ring-sky-200">
+  {{ contact.display_name }} hasn't messaged you on WhatsApp in the last 24 hours, so WhatsApp only delivers an <strong>approved template</strong>. Pick a template that has a WhatsApp template name.
 </div>
 {% endif %}
 <div class="grid gap-6 lg:grid-cols-3">
@@ -21,7 +31,7 @@
     {% if channel == "sms" %}<p class="text-xs text-slate-500"><span id="sms-count">0</span> characters · <span id="sms-parts">1</span> SMS part(s)</p>{% endif %}
     <div class="flex items-center justify-between">
       <a href="{% url 'contacts:contact_detail' contact.pk %}" class="btn btn-secondary">Cancel</a>
-      <button class="btn btn-primary">Send {% if channel == "sms" %}SMS{% else %}email{% endif %}</button>
+      <button class="btn btn-primary">Send {% if channel == "sms" %}SMS{% elif channel == "whatsapp" %}WhatsApp{% else %}email{% endif %}</button>
     </div>
   </form>
   {% include "messaging/partials/variables.html" with target="id_body" %}

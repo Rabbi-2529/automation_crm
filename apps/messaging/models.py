@@ -16,6 +16,7 @@ def new_token():
 class Channel(models.TextChoices):
     EMAIL = "email", "Email"
     SMS = "sms", "SMS"
+    WHATSAPP = "whatsapp", "WhatsApp"
 
 
 class SmtpSecurity(models.TextChoices):
@@ -29,6 +30,12 @@ class SmsProvider(models.TextChoices):
     CONSOLE = "console", "Console (development: prints instead of sending)"
     TWILIO = "twilio", "Twilio"
     HTTP = "http", "HTTP gateway (BulkSMSBD, SSL Wireless, etc.)"
+
+
+class WhatsAppProvider(models.TextChoices):
+    NONE = "", "Not set up"
+    CONSOLE = "console", "Console (development: prints instead of sending)"
+    CLOUD = "cloud", "WhatsApp Cloud API (Meta)"
 
 
 class ChannelSettings(TimeStampedModel):
@@ -82,6 +89,14 @@ class ChannelSettings(TimeStampedModel):
     send_window_end = models.TimeField(default=datetime.time(21, 0))
     sms_opt_out_footer = models.BooleanField(default=True, help_text="Add “Reply STOP to opt out” to marketing SMS.")
 
+    # WhatsApp (Phase 7): Meta's WhatsApp Cloud API. Inbound messages arrive on the webhook URL shown in settings.
+    whatsapp_provider = models.CharField(max_length=10, choices=WhatsAppProvider.choices, blank=True, default=WhatsAppProvider.NONE)
+    whatsapp_number = models.CharField(max_length=20, blank=True, help_text="Your WhatsApp business number, for display.")
+    whatsapp_phone_number_id = models.CharField(max_length=32, blank=True, help_text="Phone number ID from Meta's WhatsApp → API setup page.")
+    whatsapp_access_token = EncryptedTextField(blank=True)
+    whatsapp_app_secret = EncryptedTextField(blank=True, help_text="Meta app secret; used to check webhook signatures.")
+    whatsapp_verify_token = models.CharField(max_length=64, default=new_token, editable=False)
+
     class Meta:
         verbose_name_plural = "channel settings"
 
@@ -102,6 +117,14 @@ class ChannelSettings(TimeStampedModel):
             return bool(self.http_url_template)
         return False
 
+    @property
+    def whatsapp_ready(self):
+        if self.whatsapp_provider == WhatsAppProvider.CONSOLE:
+            return True
+        if self.whatsapp_provider == WhatsAppProvider.CLOUD:
+            return bool(self.whatsapp_phone_number_id and self.whatsapp_access_token)
+        return False
+
     @classmethod
     def for_org(cls, org):
         return cls.objects.get_or_create(org=org)[0]
@@ -112,6 +135,10 @@ class MessageTemplate(OrgScopedModel):
     channel = models.CharField(max_length=8, choices=Channel.choices, default=Channel.EMAIL)
     subject = models.CharField(max_length=200, blank=True)
     body = models.TextField(help_text="Use variables like {{ contact.first_name }} — see the list beside the editor.")
+    # WhatsApp only: a Meta-approved template is required to message someone who hasn't written in the last 24 hours.
+    whatsapp_template = models.CharField(max_length=100, blank=True, help_text="Name of the approved template in WhatsApp Manager.")
+    whatsapp_language = models.CharField(max_length=10, blank=True, default="en", help_text="Template language code, e.g. en or bn.")
+    whatsapp_params = models.TextField(blank=True, help_text="One variable per line; fills {{1}}, {{2}}… in the approved template.")
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
 
     class Meta:
@@ -173,7 +200,8 @@ class Message(OrgScopedModel):
     body_html = models.TextField(blank=True)
     message_id = models.CharField(max_length=255, blank=True, db_index=True, help_text="Email Message-ID header.")
     in_reply_to = models.CharField(max_length=255, blank=True)
-    provider_ref = models.CharField(max_length=100, blank=True, help_text="SMS provider's message id.")
+    provider_ref = models.CharField(max_length=100, blank=True, help_text="SMS / WhatsApp provider's message id.")
+    meta = models.JSONField(default=dict, blank=True, help_text="Provider extras, e.g. the WhatsApp template and its values.")
     error = models.TextField(blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     is_marketing = models.BooleanField(default=False, help_text="Sequences/broadcasts: gets an unsubscribe link and List-Unsubscribe header.")

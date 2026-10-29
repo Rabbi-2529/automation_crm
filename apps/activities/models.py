@@ -70,6 +70,8 @@ class ActivityKind(models.TextChoices):
     EMAIL_CLICKED = "email_clicked", "Email link clicked"
     SMS_SENT = "sms_sent", "SMS sent"
     SMS_RECEIVED = "sms_received", "SMS received"
+    WHATSAPP_SENT = "whatsapp_sent", "WhatsApp sent"
+    WHATSAPP_RECEIVED = "whatsapp_received", "WhatsApp received"
     MESSAGE_FAILED = "message_failed", "Message failed"
     CALL_LOGGED = "call_logged", "Call logged"
     AUTOMATION = "automation", "Automation"
@@ -79,6 +81,7 @@ class ActivityKind(models.TextChoices):
     RESUBSCRIBED = "resubscribed", "Resubscribed"
     SEQUENCE_ENROLLED = "sequence_enrolled", "Added to sequence"
     SEQUENCE_FINISHED = "sequence_finished", "Left sequence"
+    FACEBOOK_LEAD = "facebook_lead", "Facebook lead ad"
 
 
 class Activity(OrgScopedModel):

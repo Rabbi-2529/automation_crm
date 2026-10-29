@@ -117,6 +117,8 @@ class Source(models.TextChoices):
     MANUAL = "manual", "Added manually"
     IMPORT = "import", "CSV import"
     WEB_FORM = "web_form", "Web form"
+    FACEBOOK = "facebook", "Facebook lead ad"
+    WHATSAPP = "whatsapp", "WhatsApp"
     API = "api", "API"
     OTHER = "other", "Other"
 
@@ -141,6 +143,7 @@ class Contact(OrgScopedModel, CustomFieldsMixin):
     # Consent: automated/marketing sends skip opted-out contacts.
     email_opt_out = models.BooleanField(default=False)
     sms_opt_out = models.BooleanField(default=False)
+    whatsapp_opt_out = models.BooleanField(default=False)
     opted_out_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

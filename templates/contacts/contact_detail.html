@@ -5,7 +5,8 @@
 {% endblock %}
 {% block page_actions %}
 {% if contact.email %}<a href="{% url 'messaging:compose' %}?channel=email&contact={{ contact.pk }}" class="btn btn-secondary">Email</a>{% endif %}
-{% if contact.phone %}<a href="{% url 'messaging:compose' %}?channel=sms&contact={{ contact.pk }}" class="btn btn-secondary">SMS</a>{% endif %}
+{% if contact.phone %}<a href="{% url 'messaging:compose' %}?channel=sms&contact={{ contact.pk }}" class="btn btn-secondary">SMS</a>
+<a href="{% url 'messaging:compose' %}?channel=whatsapp&contact={{ contact.pk }}" class="btn btn-secondary">WhatsApp</a>{% endif %}
 <a href="{% url 'messaging:call_create' %}?contact={{ contact.pk }}" class="btn btn-secondary">Log call</a>
 <a href="{% url 'pipeline:deal_create' %}?contact={{ contact.pk }}" class="btn btn-primary">+ Deal</a>
 <a href="{% url 'contacts:contact_edit' contact.pk %}" class="btn btn-secondary">Edit</a>
@@ -81,6 +82,12 @@
           <form method="post" action="{% url 'contacts:contact_consent' contact.pk %}" class="flex items-center gap-2">{% csrf_token %}
             <input type="hidden" name="channel" value="sms"><input type="hidden" name="opt" value="{% if contact.sms_opt_out %}in{% else %}out{% endif %}">
             {% if contact.sms_opt_out %}<span class="badge bg-red-100 text-red-700">Unsubscribed</span><button class="text-xs text-violet-600 hover:underline">resubscribe</button>
+            {% else %}<span class="badge bg-emerald-100 text-emerald-700">Subscribed</span><button class="text-xs text-slate-500 hover:underline">opt out</button>{% endif %}
+          </form></li>
+        <li class="flex items-center justify-between">WhatsApp
+          <form method="post" action="{% url 'contacts:contact_consent' contact.pk %}" class="flex items-center gap-2">{% csrf_token %}
+            <input type="hidden" name="channel" value="whatsapp"><input type="hidden" name="opt" value="{% if contact.whatsapp_opt_out %}in{% else %}out{% endif %}">
+            {% if contact.whatsapp_opt_out %}<span class="badge bg-red-100 text-red-700">Unsubscribed</span><button class="text-xs text-violet-600 hover:underline">resubscribe</button>
             {% else %}<span class="badge bg-emerald-100 text-emerald-700">Subscribed</span><button class="text-xs text-slate-500 hover:underline">opt out</button>{% endif %}
           </form></li>
       </ul>

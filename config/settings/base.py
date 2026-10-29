@@ -24,6 +24,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "rest_framework",
+    "drf_spectacular",
     "apps.core",
     "apps.accounts",
     "apps.orgs",
@@ -36,6 +38,8 @@ INSTALLED_APPS = [
     "apps.leads",
     "apps.campaigns",
     "apps.reports",
+    "apps.integrations",
+    "apps.assistant",
 ]
 
 MIDDLEWARE = [
@@ -126,6 +130,9 @@ CELERY_BEAT_SCHEDULE = {
     "process-sequences": {"task": "apps.campaigns.tasks.process_sequences", "schedule": 60.0},
     "process-broadcasts": {"task": "apps.campaigns.tasks.process_broadcasts", "schedule": 60.0},
     "send-scheduled-reports": {"task": "apps.reports.tasks.send_scheduled_reports", "schedule": 900.0},
+    "retry-webhook-deliveries": {"task": "apps.integrations.tasks.retry_webhook_deliveries", "schedule": 60.0},
+    "prune-webhook-deliveries": {"task": "apps.integrations.tasks.prune_webhook_deliveries", "schedule": 86400.0},
+    "retry-facebook-leads": {"task": "apps.integrations.tasks.retry_facebook_leads", "schedule": 900.0},
 }
 
 LOGGING = {
@@ -146,3 +153,37 @@ SITE_URL = env("SITE_URL", default="http://localhost:8000")
 #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 # Changing it later makes saved secrets unreadable (they must be re-entered).
 FIELD_ENCRYPTION_KEY = env("FIELD_ENCRYPTION_KEY", default="")
+
+# REST API (Phase 7): workspace API keys only (no session auth), JSON in and out, rate limited per key.
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.integrations.api.auth.ApiKeyAuthentication"],
+    "DEFAULT_PERMISSION_CLASSES": ["apps.integrations.api.auth.ApiKeyPermission"],
+    "DEFAULT_THROTTLE_CLASSES": ["apps.integrations.api.auth.ApiKeyRateThrottle"],
+    "DEFAULT_THROTTLE_RATES": {"api_key": env("API_RATE_LIMIT", default="120/min")},
+    "DEFAULT_PAGINATION_CLASS": "apps.integrations.api.pagination.Pagination",
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "UNAUTHENTICATED_USER": None,
+}
+SPECTACULAR_SETTINGS = {
+    "TITLE": "ThingBD CRM API",
+    "DESCRIPTION": "Contacts, companies, deals, tasks, notes and the timeline of one workspace. "
+                   "Create a key under Settings → Integrations and send it as `Authorization: Bearer tbd_…`.",
+    "VERSION": "1.0.0",
+    "SERVE_AUTHENTICATION": [],
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SCHEMA_PATH_PREFIX": "/api/v1",
+}
+
+# AI assistant platform default. Workspaces can pick their own under Workspace → AI assistant.
+# Any OpenAI-compatible API works: Ollama (free, open-source, self-hosted), Groq, OpenRouter, LM Studio, OpenAI…
+# AI_PROVIDER: builtin | ollama | groq | openrouter | openai_compatible. Empty base URL/model = the provider's defaults.
+AI_PROVIDER = env("AI_PROVIDER", default="ollama")
+AI_BASE_URL = env("AI_BASE_URL", default="")
+AI_MODEL = env("AI_MODEL", default="")
+AI_API_KEY = env("AI_API_KEY", default="")
+
+# Outgoing webhooks and workflow webhooks refuse private/localhost addresses unless this is on (local development).
+ALLOW_PRIVATE_WEBHOOKS = env.bool("ALLOW_PRIVATE_WEBHOOKS", default=False)

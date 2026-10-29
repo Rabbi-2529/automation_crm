@@ -1,0 +1,25 @@
+{% extends "layouts/app.html" %}
+{% block title %}{% if object %}Edit page{% else %}Connect a Facebook page{% endif %}{% endblock %}
+{% block page_title %}<a href="{% url 'integrations:overview' %}?tab=facebook" class="text-sm font-normal text-slate-400 hover:text-violet-600">Integrations /</a> {% if object %}{{ object.name }}{% else %}Connect a Facebook page{% endif %}{% endblock %}
+{% block content %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <form method="post" class="card space-y-6 lg:col-span-2">{% csrf_token %}
+    {% include "partials/form.html" %}
+    <div class="flex justify-between">
+      <a href="{% url 'integrations:overview' %}?tab=facebook" class="btn btn-secondary">Cancel</a>
+      <div class="flex gap-2">
+        {% if object %}<button name="action" value="delete" class="btn btn-secondary text-red-600" formnovalidate onclick="return confirm('Disconnect this page? Its lead history is removed too.')">Disconnect</button>{% endif %}
+        <button class="btn btn-primary">Save page</button>
+      </div>
+    </div>
+  </form>
+  <aside class="card text-sm text-slate-600">
+    <h2 class="font-semibold text-slate-900">Getting a page access token</h2>
+    <ol class="mt-2 list-decimal space-y-1 pl-5">
+      <li>In Meta Business Settings create a <em>System user</em> and give it the page.</li>
+      <li>Generate a token for your app with <code class="text-xs">leads_retrieval</code>, <code class="text-xs">pages_manage_metadata</code> and <code class="text-xs">pages_show_list</code>.</li>
+      <li>Paste it here. It's stored encrypted and never shown again.</li>
+    </ol>
+  </aside>
+</div>
+{% endblock %}

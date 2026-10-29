@@ -1,0 +1,79 @@
+{% extends "layouts/app.html" %}
+{% block title %}Webhook{% endblock %}
+{% block page_title %}<a href="{% url 'integrations:overview' %}?tab=webhooks" class="text-sm font-normal text-slate-400 hover:text-violet-600">Integrations /</a> {{ endpoint.description|default:"Webhook" }}{% endblock %}
+{% block page_actions %}
+<form method="post" action="{% url 'integrations:webhook_action' endpoint.pk %}">{% csrf_token %}<input type="hidden" name="action" value="test"><button class="btn btn-secondary">Send test event</button></form>
+<a href="{% url 'integrations:webhook_edit' endpoint.pk %}" class="btn btn-primary">Edit</a>
+{% endblock %}
+{% block content %}
+{% if not endpoint.is_active %}
+<div class="mb-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-800 ring-1 ring-amber-200">
+  This webhook is switched off{% if endpoint.disabled_reason %}: {{ endpoint.disabled_reason }}{% endif %}. Fix the receiving side, send a test event, then turn it back on under Edit.
+</div>
+{% endif %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="card overflow-x-auto p-0 lg:col-span-2">
+    <h2 class="border-b border-slate-100 px-4 py-3 font-semibold">Recent deliveries</h2>
+    <table class="table">
+      <thead class="bg-slate-50"><tr><th>When</th><th>Event</th><th>Status</th><th>Response</th><th></th></tr></thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for d in deliveries %}
+        <tr>
+          <td class="whitespace-nowrap">{{ d.created_at|date:"d M, H:i:s" }}</td>
+          <td><code class="text-xs">{{ d.event }}</code></td>
+          <td>{% if d.status == "success" %}<span class="badge bg-emerald-100 text-emerald-700">Delivered</span>
+            {% elif d.status == "failed" %}<span class="badge bg-red-100 text-red-700">Failed</span>
+            {% else %}<span class="badge bg-amber-100 text-amber-800">Retrying</span>{% endif %}
+            <span class="text-xs text-slate-500">{{ d.attempts }} attempt{{ d.attempts|pluralize }}</span>
+            {% if d.status == "pending" and d.next_attempt_at %}<div class="text-xs text-slate-500">next {{ d.next_attempt_at|timeuntil }}</div>{% endif %}</td>
+          <td class="max-w-xs text-xs">{% if d.response_status %}HTTP {{ d.response_status }}{% endif %}{% if d.error %}<div class="text-red-600">{{ d.error|truncatechars:120 }}</div>{% endif %}</td>
+          <td class="text-right">
+            <form method="post" action="{% url 'integrations:webhook_action' endpoint.pk %}">{% csrf_token %}
+              <input type="hidden" name="action" value="redeliver"><input type="hidden" name="delivery" value="{{ d.pk }}">
+              <button class="text-xs text-violet-600 hover:underline">Redeliver</button></form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="py-10 text-center text-sm text-slate-500">Nothing sent yet. Send a test event, or wait for the next matching event.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <aside class="space-y-6 text-sm">
+    <div class="card space-y-3">
+      <div><p class="text-xs text-slate-500">URL</p><p class="break-all font-medium">{{ endpoint.url }}</p></div>
+      <div><p class="text-xs text-slate-500">Events</p>
+        <p>{% for label in event_labels %}<span class="badge mr-1 mt-1 bg-violet-50 text-violet-700">{{ label }}</span>{% empty %}All events{% endfor %}</p></div>
+      <div><p class="text-xs text-slate-500">Signing secret</p>
+        <div class="mt-1 flex items-center gap-2">
+          <code id="secret" class="hidden break-all rounded bg-slate-100 px-2 py-1 text-xs">{{ endpoint.secret }}</code>
+          <button type="button" class="text-xs text-violet-600 hover:underline" id="reveal">Show</button>
+          <button type="button" class="text-xs text-violet-600 hover:underline" data-copy="#secret">Copy</button>
+        </div></div>
+      <form method="post" action="{% url 'integrations:webhook_action' endpoint.pk %}" onsubmit="return confirm('Make a new secret? The receiving system must be updated, or it will reject events.')">{% csrf_token %}
+        <input type="hidden" name="action" value="rotate"><button class="text-xs text-slate-500 hover:underline">Roll secret</button></form>
+    </div>
+    <div class="card text-slate-600">
+      <h2 class="font-semibold text-slate-900">Verify the signature</h2>
+      <pre class="mt-2 overflow-x-auto rounded bg-slate-900 p-3 text-xs text-slate-100">t, v1 = header split on ","
+expected = hmac_sha256(secret,
+             t + "." + raw_body)
+accept if expected == v1
+  and now - t &lt; 5 minutes</pre>
+    </div>
+    <form method="post" action="{% url 'integrations:webhook_action' endpoint.pk %}" onsubmit="return confirm('Delete this webhook and its delivery log?')">{% csrf_token %}
+      <input type="hidden" name="action" value="delete"><button class="text-sm text-red-600 hover:underline">Delete webhook</button></form>
+  </aside>
+</div>
+<script>
+  document.getElementById("reveal").addEventListener("click", e => {
+    const secret = document.getElementById("secret");
+    secret.classList.toggle("hidden");
+    e.target.textContent = secret.classList.contains("hidden") ? "Show" : "Hide";
+  });
+  document.querySelectorAll("[data-copy]").forEach(btn => btn.addEventListener("click", () => {
+    navigator.clipboard.writeText(document.querySelector(btn.dataset.copy).textContent.trim());
+    btn.textContent = "Copied";
+  }));
+</script>
+{% endblock %}

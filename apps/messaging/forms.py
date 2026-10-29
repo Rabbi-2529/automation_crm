@@ -96,14 +96,21 @@ class SmsSettingsForm(KeepSecretsMixin, forms.ModelForm):
 class TemplateForm(OrgModelForm):
     class Meta:
         model = MessageTemplate
-        fields = ["name", "channel", "subject", "body"]
-        widgets = {"body": forms.Textarea(attrs={"rows": 10})}
-        help_texts = {"subject": "Email only."}
+        fields = ["name", "channel", "subject", "body", "whatsapp_template", "whatsapp_language", "whatsapp_params"]
+        widgets = {"body": forms.Textarea(attrs={"rows": 10}), "whatsapp_params": forms.Textarea(attrs={"rows": 3})}
+        labels = {"whatsapp_template": "WhatsApp template name", "whatsapp_language": "Template language",
+                  "whatsapp_params": "Template variables"}
+        help_texts = {"subject": "Email only.",
+                      "body": "For WhatsApp templates, paste the approved wording here so the inbox shows what was sent."}
 
     def clean(self):
         cleaned = super().clean()
         if cleaned.get("channel") == Channel.EMAIL and not cleaned.get("subject"):
             self.add_error("subject", "Emails need a subject.")
+        if cleaned.get("channel") != Channel.WHATSAPP:
+            cleaned["whatsapp_template"], cleaned["whatsapp_params"] = "", ""
+        elif cleaned.get("whatsapp_template") and not cleaned.get("whatsapp_language"):
+            self.add_error("whatsapp_language", "Set the language the template was approved in.")
         name = (cleaned.get("name") or "").strip()
         clash = MessageTemplate.objects.for_org(self.org).filter(name__iexact=name, channel=cleaned.get("channel"))
         if name and clash.exclude(pk=self.instance.pk).exists():
@@ -128,11 +135,14 @@ class ComposeForm(forms.Form):
         self.fields["deal"].queryset = deals
         if not deals.exists():
             del self.fields["deal"]
-        if channel == Channel.SMS:
+        if channel in (Channel.SMS, Channel.WHATSAPP):
+            limit = 1000 if channel == Channel.SMS else 4096
             del self.fields["subject"]
-            self.fields["body"].widget.attrs.update(rows=4, maxlength=1000)
-            self.fields["body"].max_length = 1000
+            self.fields["body"].widget.attrs.update(rows=4, maxlength=limit)
+            self.fields["body"].max_length = limit
             self.fields["to"].label = "To (phone)"
+            if channel == Channel.WHATSAPP:
+                self.fields["template"].help_text = "Templates with a WhatsApp template name send the approved template."
         else:
             self.fields["subject"].required = True
 
@@ -164,6 +174,26 @@ class CallLogForm(forms.ModelForm):
         self.fields["deal"].queryset = Deal.objects.for_org(contact.org).filter(contact=contact)
         self.fields["called_at"].input_formats = ["%Y-%m-%dT%H:%M"]
         self.initial.setdefault("called_at", timezone.localtime().replace(second=0, microsecond=0))
+
+
+class WhatsAppSettingsForm(KeepSecretsMixin, forms.ModelForm):
+    secret_fields = ("whatsapp_access_token", "whatsapp_app_secret")
+
+    class Meta:
+        model = ChannelSettings
+        fields = ["whatsapp_provider", "whatsapp_number", "whatsapp_phone_number_id", "whatsapp_access_token", "whatsapp_app_secret"]
+        widgets = {"whatsapp_access_token": SecretInput(), "whatsapp_app_secret": SecretInput()}
+        labels = {"whatsapp_provider": "Provider", "whatsapp_number": "Business number", "whatsapp_phone_number_id": "Phone number ID",
+                  "whatsapp_access_token": "Access token", "whatsapp_app_secret": "App secret"}
+        help_texts = {"whatsapp_access_token": "A permanent System User token with whatsapp_business_messaging permission."}
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("whatsapp_provider") == "cloud":
+            for name in ("whatsapp_phone_number_id", "whatsapp_access_token", "whatsapp_app_secret"):
+                if not cleaned.get(name):
+                    self.add_error(name, "Required for the WhatsApp Cloud API.")
+        return cleaned
 
 
 class SendingRulesForm(forms.ModelForm):

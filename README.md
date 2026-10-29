@@ -2,7 +2,7 @@
 
 ThingBD's ([thingbd.com](https://thingbd.com/)) multi-tenant CRM built on Django, with a workflow automation engine (trigger → conditions → actions) planned for Phase 4. Branding follows the ThingBD site: violet `#8B5CF6`, near-black `#050505` / `#121118`, Outfit font, "T" mark (`static/img/favicon.svg`).
 
-**Stack:** Django 5.2 · PostgreSQL (SQLite for quick local runs) · Celery + Redis · Tailwind + HTMX · Select2 · DataTables (server-side) · FullCalendar · Docker Compose
+**Stack:** Django 5.2 · PostgreSQL (SQLite for quick local runs) · Celery + Redis · Django REST Framework + OpenAPI · Tailwind + HTMX · Select2 · DataTables (server-side) · FullCalendar · Chart.js · Docker Compose
 
 ## Status
 
@@ -15,16 +15,16 @@ ThingBD's ([thingbd.com](https://thingbd.com/)) multi-tenant CRM built on Django
 | 4 | Automation engine: triggers, conditions, actions, waits, builder, run logs, webhooks | ✅ done |
 | 5 | **Lead management & communication automation**: web forms, lead scoring & grades, segments, email/SMS sequences, broadcasts, unsubscribe & SMS STOP, quiet hours, speed-to-lead / date / deal-idle triggers | ✅ done |
 | 6 | **Sales & reporting automation**: sales dashboard with charts, funnel & win rate, forecast, rep leaderboard, targets & attainment, scheduled email reports (team summary + rep pipeline digest), CSV exports | ✅ done |
-| 7 | REST API, outgoing webhooks, integrations (WhatsApp, Facebook lead ads, Google Calendar) | next |
-| 8 | Hardening, backups, production deploy | |
+| 7 | **REST API & integrations**: API keys + REST API with Swagger docs, signed outgoing webhooks with retries, WhatsApp Cloud API (send, inbox, templates, workflows), Facebook lead ads, Google Calendar subscription feed | ✅ done |
+| 8 | Hardening, backups, production deploy | next |
 
 ### Automation coverage
 
 | Area | Already built | Added to the roadmap |
 |---|---|---|
-| **Lead management** | Contact capture (manual, CSV, webhook), dedupe, lifecycle auto-advance from deals, owner assignment incl. round robin, "inactive N days" trigger | Phase 5: web forms with spam protection, lead scoring rules + hot/warm/cold grades, "lead not contacted within N hours" (speed-to-lead), segments |
+| **Lead management** | Contact capture (manual, CSV, webhook, REST API, Facebook lead ads), dedupe, lifecycle auto-advance from deals, owner assignment incl. round robin, "inactive N days" trigger | Phase 5: web forms with spam protection, lead scoring rules + hot/warm/cold grades, "lead not contacted within N hours" (speed-to-lead), segments |
 | **Workflow automation** | Triggers → conditions → actions, waits, "continue only if", run logs, webhooks in/out, loop protection | Phase 5: triggers for form submitted, lead grade changed, date fields (birthdays/renewals), deal idle; actions for sequences and score; sends pause outside quiet hours |
-| **SMS & communication** | 1:1 email/SMS, templates, inbox, open/click tracking, IMAP + Twilio inbound, workflow sends | Phase 5: multi-step email/SMS sequences that stop on reply, bulk broadcasts to segments, unsubscribe link + List-Unsubscribe, SMS STOP/START, quiet hours. Phase 7: WhatsApp |
+| **SMS & communication** | 1:1 email/SMS, templates, inbox, open/click tracking, IMAP + Twilio inbound, workflow sends | Phase 5: multi-step email/SMS sequences that stop on reply, bulk broadcasts to segments, unsubscribe link + List-Unsubscribe, SMS STOP/START, quiet hours. Phase 7 (done): WhatsApp 1:1, inbox, approved templates, workflow action + trigger |
 | **Sales & reporting** | Pipeline board totals, weighted forecast, dashboard KPIs, deal close-soon / idle triggers | Phase 6 (done): reports dashboard, funnel/win rate, forecast, leaderboard, targets, scheduled report emails, CSV exports |
 
 ## Run locally (no Docker)
@@ -44,10 +44,20 @@ Open http://localhost:8000/accounts/signup/ (the preview config in `.claude/laun
 ## Run with Docker (Postgres + Redis + real Celery worker)
 
 ```bash
-docker compose up --build
+cp .env.example .env
+docker compose up -d
 ```
 
-Services: `migrate` (runs once, first), `web` (:8000), `worker`, `beat`, `db` (Postgres 16), `redis`. After changing `requirements.txt`, run `docker compose up --build`; Docker's Postgres is a separate database from your local SQLite. Then visit **System status** as an admin and click *Run test task* to confirm the worker answers.
+`docker compose up -d` rebuilds the image first (`pull_policy: build`, cached, ~20 s when nothing changed), so packages added to `requirements.txt` are always installed, and the `migrate` service applies new migrations before web/worker/beat start. If it ever reports `service "migrate" didn't complete successfully`, read why with `docker compose logs migrate`.
+
+Services: `migrate` (runs once, first), `web` (:8000), `worker`, `beat`, `db` (Postgres 16), `redis`. Docker's Postgres is a separate database from your local SQLite. Visit **System status** as an admin and click *Run test task* to confirm the worker answers.
+
+Optional free AI (open-source models via Ollama) for the help assistant and reply drafts:
+
+```bash
+docker compose --profile ai up -d
+docker compose exec ollama ollama pull llama3.2:3b
+```
 
 ## Tests
 
@@ -71,6 +81,8 @@ apps/automation/   Workflow/Action/Run/StepLog; registry.py (vocabulary), engine
 apps/leads/        Web forms (public /f/<token>/, embeddable), lead scoring rules, score log, grade thresholds
 apps/campaigns/    Segments (SQL-evaluated conditions), sequences + enrollments, broadcasts + recipients
 apps/reports/      metrics.py (one Scope → KPIs, series, funnel, forecast, leaderboard), targets, scheduled report emails
+apps/integrations/ API keys + REST API (api/), outgoing webhooks, Facebook lead ads, iCalendar feed
+apps/assistant/    AI help assistant + reply drafts: providers.py (OpenAI-compatible: Ollama/Groq/OpenRouter/…), help_articles.py
 static/js/ui.js    Select2 on every form select, AJAX pickers, DataTables (client + server side); static/css/ui.css themes them
 templates/         base + app/auth layouts, shared form partial
 ```
@@ -81,7 +93,7 @@ templates/         base + app/auth layouts, shared form partial
 |---|:-:|:-:|:-:|
 | View / create / edit contacts, companies, deals, notes, files; move/win/lose deals; tasks; bulk tag/owner/stage | ✓ | ✓ | ✓ |
 | Delete contacts, companies & deals, bulk delete, CSV import & export, manage tags, pipelines & lost reasons | | ✓ | ✓ |
-| Manage custom fields, members, org settings | | | ✓ |
+| Manage custom fields, members, org settings, messaging channels, integrations (API keys, webhooks, Facebook) | | | ✓ |
 
 Notes and files can be deleted by their author or any manager. Tasks can be edited/deleted by their assignee, creator or a manager; anyone can tick one off. Uploaded files are private: they're served only through an org-checked download view, never from `MEDIA_URL`.
 
@@ -99,13 +111,14 @@ Reminders are emailed by `apps.tasks.tasks.send_task_reminders`, which Celery be
 - **DataTables**: big lists use server-side processing. Subclass `apps.core.datatables.DataTableView`, list `Column`s (render with `apps.core.cells` helpers, which escape everything) and point `<table data-dt-source data-dt-filters="#filters">` at it. Small tables just add `data-datatable`.
 - **FullCalendar** at `/tasks/calendar/`: tasks by due time and open deals by expected close date; drag to reschedule, click a day to add a task.
 
-## Email & SMS
+## Email, SMS & WhatsApp
 
-Admins set it up under **Settings → Email & SMS**:
+Admins set it up under **Settings → Messaging channels**:
 - **Outgoing email**: your own SMTP (Gmail/Workspace, cPanel mail, etc.) or the platform default. Opens (pixel) and clicks (redirect through `/t/c/<token>/`) are tracked per message.
 - **Incoming email**: IMAP polling every 2 minutes (Celery beat). Replies thread into the original conversation via `In-Reply-To`/`References`; unknown senders appear as "New sender" and can be saved as contacts.
 - **SMS**: Twilio (with signed inbound webhook) or any HTTP gateway URL with `{to}`, `{message}`, `{sender}`, `{api_key}` (BulkSMSBD, SSL Wireless, …). Numbers are normalised to `8801XXXXXXXXX`. The *Console* provider prints instead of sending for development.
-- SMTP/IMAP passwords and SMS keys are encrypted with `FIELD_ENCRYPTION_KEY`. Set it once per environment; changing it means re-entering them.
+- **WhatsApp**: Meta's WhatsApp Cloud API (phone number ID, permanent access token, app secret). Point the Meta app's webhook at the URL + verify token shown on the WhatsApp tab; incoming messages land in the inbox and delivery receipts mark failed/read messages. Meta only allows free text within 24 hours of the contact's last message; after that, use a WhatsApp message template whose *WhatsApp template name* matches one approved in WhatsApp Manager (its variables fill `{{1}}`, `{{2}}`…). STOP/START replies opt the contact out of / back into WhatsApp. *Console* prints instead of sending. Sequences and broadcasts stay email/SMS for now (bulk WhatsApp needs approved marketing templates).
+- SMTP/IMAP passwords, SMS keys and WhatsApp/Facebook tokens are encrypted with `FIELD_ENCRYPTION_KEY`. Set it once per environment; changing it means re-entering them.
 - Templates support `{{ contact.first_name }}`, `{{ deal.value }}`, `{{ user.full_name }}` and more, with `|default:"…"` fallbacks. Only whitelisted values are reachable.
 
 ## Automations (Phase 4)
@@ -145,9 +158,28 @@ Admins set it up under **Settings → Email & SMS**:
 
 Chart colours were checked with a colour-blindness/contrast validator: violet `#7c3aed` for single series, plus orange `#eb6834` as the second series.
 
+## REST API & integrations (Phase 7)
+
+**Settings → Integrations** (admins):
+
+- **REST API** at `/api/v1/` with interactive docs at `/api/docs/` (OpenAPI schema at `/api/v1/schema/`). Create a key, then send `Authorization: Bearer tbd_…` (or `X-Api-Key`). Keys are stored hashed and shown once, can be read-only or read/write, act as the person who made them (their role; deleting needs a manager's key) and stop working if that person leaves. 120 requests a minute per key (`API_RATE_LIMIT`).
+  - `contacts` (+ `POST contacts/upsert/` matched by email, then phone), `companies`, `deals` (+ `won/`, `lost/`, `reopen/`), `tasks` (+ `complete/`, `reopen/`), `notes`, `activities` (the timeline), and read-only `pipelines`, `tags`, `members`, `me`.
+  - Writes go through the same services as the app, so the timeline, lifecycle moves, automations and webhooks all fire. Filters: `search`, `email`, `phone`, `tag`, `owner`, `updated_since`…; pages of 50 (`page_size` up to 200).
+- **Outgoing webhooks**: pick timeline events (or all); each is POSTed as JSON with the contact/deal/company in the API's shape. Signed with `X-ThingBD-Signature: t=<unix>,v1=<HMAC-SHA256(secret, t + "." + body)>`. Retries after 1 min, 5 min, 30 min, 2 h, 6 h; 50 failures in a row switch the endpoint off. Delivery log with redeliver and a test button. Private/localhost URLs are refused (SSRF) unless `ALLOW_PRIVATE_WEBHOOKS` (on in dev settings).
+- **Facebook lead ads**: add the Meta app secret, connect pages (Page ID + page access token with `leads_retrieval`), and subscribe the app's Page webhook (`leadgen`) to the URL + verify token shown. Each lead is fetched from the Graph API and creates or updates the contact (source *Facebook lead ad*, default owner, tags); unknown questions go into a note, or into a custom field with the same key. Failed fetches are retried every 15 minutes (up to 5 times) and can be retried by hand. Workflows can start on *Facebook lead ad is submitted* (optionally for one page).
+- **Google Calendar** (everyone): Calendar → *Sync to Google Calendar* gives each person a private iCalendar link with their tasks and open deals' close dates; subscribe from Google, Outlook or Apple Calendar. One-way; the link can be rotated or turned off.
+
+## Help & AI assistant
+
+- **Sidebar**: Dashboard and Help, then collapsible **CRM**, **Marketing** and **Workspace** groups. The group of the current page opens by itself (otherwise the last one you opened); opening one closes the others. The menu scrolls on short screens. A red dot on a closed group means overdue tasks or unread messages.
+- **Help center** (`/help/`): short articles for every feature, searchable, with "Go to page" links. They're in `apps/assistant/help_articles.py`; keep them in step with the app.
+- **✨ Help** button on every page: staff ask in English or Bangla. The AI answers only from the matching help articles (and the person's role), links the articles it used, and staff can rate answers. With no AI, or if the AI is down, the matching articles are shown instead.
+- **Draft with AI** in the inbox: a suggested reply from the last 8 messages plus *About your business*; channel-aware (email / SMS length / WhatsApp). It only fills the reply box; staff edit and send it themselves.
+- **Choosing the AI** (admins: **Workspace → AI assistant**, or platform-wide with `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`): built-in help only, **Ollama** (free open-source models on your own server; nothing leaves it), **Groq** or **OpenRouter** (free tiers of open-source models), or any OpenAI-compatible API. Everything uses the OpenAI chat-completions format, so moving to another or a paid model later is a settings change. Per-person daily limit, usage and errors are shown on the settings page; "Test connection" checks it.
+
 ## Timeline events → automations
 
-Every change to a contact, company or deal goes through `apps.activities.services.record()` (created, updated, stage/owner changed, tag added/removed, note, file, imported, deal moved/won/lost/reopened, task created/completed, email sent/received/opened/clicked, SMS sent/received, message failed, call logged, form submitted, lead grade changed, unsubscribed/resubscribed, added to / left sequence). Phase 4's automation triggers will subscribe there, so new features should log through it rather than writing `Activity` rows directly.
+Every change to a contact, company or deal goes through `apps.activities.services.record()` (created, updated, stage/owner changed, tag added/removed, note, file, imported, deal moved/won/lost/reopened, task created/completed, email sent/received/opened/clicked, SMS sent/received, message failed, call logged, form submitted, lead grade changed, unsubscribed/resubscribed, added to / left sequence, WhatsApp sent/received, Facebook lead ad). Automations, lead scoring and outgoing webhooks all subscribe there. Phase 4's automation triggers will subscribe there, so new features should log through it rather than writing `Activity` rows directly.
 
 ## Multi-tenancy rules (read before adding Phase 1+ models)
 

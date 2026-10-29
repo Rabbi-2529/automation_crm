@@ -1,11 +1,12 @@
 {% extends "layouts/app.html" %}
-{% block title %}Email &amp; SMS{% endblock %}
-{% block page_title %}Email &amp; SMS{% endblock %}
+{% block title %}Messaging channels{% endblock %}
+{% block page_title %}Messaging channels{% endblock %}
 {% block content %}
 <nav class="mb-6 inline-flex rounded-lg bg-white p-1 text-sm ring-1 ring-slate-200">
   <a href="?tab=email" class="rounded-md px-4 py-1.5 {% if tab == 'email' %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Outgoing email</a>
   <a href="?tab=imap" class="rounded-md px-4 py-1.5 {% if tab == 'imap' %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Incoming email</a>
   <a href="?tab=sms" class="rounded-md px-4 py-1.5 {% if tab == 'sms' %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">SMS</a>
+  <a href="?tab=whatsapp" class="rounded-md px-4 py-1.5 {% if tab == 'whatsapp' %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">WhatsApp</a>
   <a href="?tab=rules" class="rounded-md px-4 py-1.5 {% if tab == 'rules' %}bg-violet-600 text-white{% else %}text-slate-600 hover:bg-slate-50{% endif %}">Sending rules</a>
 </nav>
 
@@ -19,6 +20,11 @@
     {% elif tab == "imap" %}
     <form method="post" class="card space-y-6">{% csrf_token %}<input type="hidden" name="section" value="imap">
       {% include "partials/form.html" with form=imap_form %}
+      <div class="flex justify-end"><button class="btn btn-primary">Save</button></div>
+    </form>
+    {% elif tab == "whatsapp" %}
+    <form method="post" class="card space-y-6">{% csrf_token %}<input type="hidden" name="section" value="whatsapp">
+      {% include "partials/form.html" with form=whatsapp_form %}
       <div class="flex justify-end"><button class="btn btn-primary">Save</button></div>
     </form>
     {% elif tab == "rules" %}
@@ -61,13 +67,36 @@
       </form>
       <p class="mt-3 text-xs text-slate-500">The first check only remembers where the mailbox is up to; mail from then on is imported. Replies are matched to the email they answer, and new senders show up as "New sender".</p>
     </div>
+    {% elif tab == "whatsapp" %}
+    <div class="card">
+      <h2 class="font-semibold">Send a test message</h2>
+      <form method="post" action="{% url 'messaging:channel_test' %}" class="mt-3 space-y-3 form-stack">{% csrf_token %}
+        <input type="hidden" name="action" value="whatsapp">
+        <input type="tel" name="to" value="{{ request.user.phone }}" placeholder="01XXXXXXXXX" required aria-label="WhatsApp number">
+        <button class="btn btn-secondary">Send test</button>
+      </form>
+      <p class="mt-3 text-xs text-slate-500">Meta only delivers free text to people who messaged your number in the last 24 hours, so message yourself first.</p>
+    </div>
+    <div class="card">
+      <h2 class="font-semibold">Webhook (incoming messages)</h2>
+      <p class="mt-2 text-slate-600">In your Meta app → WhatsApp → Configuration, set:</p>
+      <dl class="mt-2 space-y-2 text-xs">
+        <div><dt class="text-slate-500">Callback URL</dt><dd><code class="block break-all rounded bg-slate-100 p-2">{{ whatsapp_webhook }}</code></dd></div>
+        <div><dt class="text-slate-500">Verify token</dt><dd><code class="block break-all rounded bg-slate-100 p-2">{{ channel_settings.whatsapp_verify_token }}</code></dd></div>
+      </dl>
+      <p class="mt-2 text-xs text-slate-500">Subscribe to the <em>messages</em> field. Delivery receipts mark failed sends and read messages.</p>
+    </div>
+    <div class="card text-slate-600">
+      <h2 class="font-semibold text-slate-900">Templates</h2>
+      <p class="mt-2">To start a conversation (workflows, follow-ups after 24 hours) create a <strong>WhatsApp</strong> message template here with the <em>name</em> of a template approved in WhatsApp Manager. Its variables fill <code>{{"{{"}}1}}</code>, <code>{{"{{"}}2}}</code>… in order.</p>
+    </div>
     {% elif tab == "rules" %}
     <div class="card text-slate-600">
       <h2 class="font-semibold text-slate-900">Who follows these rules</h2>
       <ul class="mt-2 list-disc space-y-1 pl-5">
         <li>Workflow emails and SMS, sequences and broadcasts wait for the window and skip unsubscribed contacts.</li>
         <li>Messages you write yourself from a contact or the inbox always go immediately.</li>
-        <li>Replies of STOP / UNSUBSCRIBE / বন্ধ opt a contact out of SMS; START opts them back in.</li>
+        <li>Replies of STOP / UNSUBSCRIBE / বন্ধ opt a contact out of SMS (or WhatsApp, when sent there); START opts them back in.</li>
       </ul>
     </div>
     {% else %}

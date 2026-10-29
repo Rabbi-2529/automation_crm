@@ -14,6 +14,8 @@ CONTACT_KINDS = {
     ActivityKind.EMAIL_CLICKED: "email_clicked",
     ActivityKind.EMAIL_RECEIVED: "email_received",
     ActivityKind.SMS_RECEIVED: "sms_received",
+    ActivityKind.WHATSAPP_RECEIVED: "whatsapp_received",
+    ActivityKind.FACEBOOK_LEAD: "facebook_lead",
     ActivityKind.CALL_LOGGED: "call_logged",
     ActivityKind.TASK_COMPLETED: "task_completed",
     ActivityKind.FORM_SUBMITTED: "form_submitted",

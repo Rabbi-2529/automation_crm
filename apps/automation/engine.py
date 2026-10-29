@@ -43,6 +43,8 @@ def trigger_config_matches(workflow, activity):
         return str(data.get("to")) == str(cfg["stage"])
     if kind == "form_submitted" and cfg.get("form"):
         return str(data.get("form")) == str(cfg["form"])
+    if kind == "facebook_lead" and cfg.get("page"):
+        return str(data.get("page")) == str(cfg["page"])
     if kind == "lead_grade_changed" and cfg.get("to_grade"):
         return data.get("to") == cfg["to_grade"]
     return True

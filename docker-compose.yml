@@ -1,10 +1,11 @@
 # Local development stack: Django dev server, Celery worker + beat, Postgres, Redis.
 # Production overrides (gunicorn, nginx, TLS, backups) come in Phase 8.
-# After changing requirements.txt, rebuild: docker compose up --build
-# After pulling new migrations:            docker compose up -d   (the migrate service runs first)
+# `docker compose up -d` rebuilds the image first (pull_policy: build; cached layers make it quick), so new
+# packages in requirements.txt are always installed, and the migrate service then applies new migrations.
 x-app: &app
   build: .
   image: automation-crm-app  # one image shared by migrate, web, worker and beat
+  pull_policy: build
   env_file: .env
   environment:
     DJANGO_SETTINGS_MODULE: config.settings.dev
@@ -12,6 +13,9 @@ x-app: &app
     CELERY_BROKER_URL: redis://redis:6379/0
     CELERY_TASK_ALWAYS_EAGER: "False"
     ALLOWED_HOSTS: localhost,127.0.0.1,0.0.0.0
+    # AI assistant: the optional `ollama` service below (docker compose --profile ai up -d). Without it the help
+    # center answers on its own. Override in .env to use Groq/OpenRouter/etc. instead.
+    AI_BASE_URL: ${AI_BASE_URL:-http://ollama:11434/v1}
   volumes:
     - .:/app
 
@@ -76,5 +80,17 @@ services:
     command: celery -A config beat --loglevel=info --schedule /tmp/celerybeat-schedule
     depends_on: *after-migrate
 
+  # Free, open-source AI for the help assistant and reply drafts. Start with the "ai" profile, then pull a model once:
+  #   docker compose --profile ai up -d
+  #   docker compose exec ollama ollama pull llama3.2:3b
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ai"]
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+
 volumes:
   pgdata:
+  ollama:

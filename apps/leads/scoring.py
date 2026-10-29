@@ -14,6 +14,8 @@ KIND_TO_EVENT = {
     ActivityKind.EMAIL_CLICKED: ScoringEvent.EMAIL_CLICKED,
     ActivityKind.EMAIL_RECEIVED: ScoringEvent.EMAIL_RECEIVED,
     ActivityKind.SMS_RECEIVED: ScoringEvent.SMS_RECEIVED,
+    ActivityKind.WHATSAPP_RECEIVED: ScoringEvent.WHATSAPP_RECEIVED,
+    ActivityKind.FACEBOOK_LEAD: ScoringEvent.FACEBOOK_LEAD,
     ActivityKind.CALL_LOGGED: ScoringEvent.CALL_LOGGED,
     ActivityKind.UNSUBSCRIBED: ScoringEvent.UNSUBSCRIBED,
 }

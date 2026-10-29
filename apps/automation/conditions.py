@@ -23,7 +23,7 @@ def resolve(key, contact=None, deal=None):
         return obj.company.name if obj.company_id else ""
     if name in ("owner", "stage"):
         return str(getattr(obj, f"{name}_id") or "")
-    if name in ("email_opt_out", "sms_opt_out"):
+    if name in ("email_opt_out", "sms_opt_out", "whatsapp_opt_out"):
         return "yes" if getattr(obj, name) else "no"
     if name == "days_since_created":
         return _days_since(obj.created_at)
